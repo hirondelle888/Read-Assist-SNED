@@ -1,0 +1,6 @@
+{
+  "name": "ReadAssist-SNED",
+  "description": "A Web-Based Hybrid Explainable Decision-Support System for IEP-Aligned Reading Comprehension Intervention Among Learners with Disabilities or Special Educational Needs.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
