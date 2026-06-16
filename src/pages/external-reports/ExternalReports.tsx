@@ -23,7 +23,7 @@ const initialForm = {
   authorizedForUse: true,
   keyFindingsSummary: "",
   existingRecommendations: "",
-  attachmentName: "Attach document placeholder",
+  attachmentName: "Confidential file reference pending",
 };
 
 export function ExternalReports() {
@@ -57,7 +57,7 @@ export function ExternalReports() {
         .split("\n")
         .map((item) => item.trim())
         .filter(Boolean),
-      attachmentName: formData.attachmentName.trim() || "Attach document placeholder",
+      attachmentName: formData.attachmentName.trim() || "Confidential file reference pending",
     });
     setSavedMessage("External report summary saved.");
     setFormData(initialForm);
@@ -196,7 +196,7 @@ export function ExternalReports() {
                 <Upload size={18} className="text-slate-500 dark:text-slate-400" />
                 <div className="min-w-0 flex-1">
                   <p className="font-medium text-slate-900 dark:text-slate-50">{formData.attachmentName}</p>
-                  <p className="text-sm text-slate-500 dark:text-slate-400">Prototype placeholder for confidential report attachment or file reference.</p>
+                  <p className="text-sm text-slate-500 dark:text-slate-400">Confidential attachment or file-reference field for the authorized external report record.</p>
                 </div>
               </div>
             </Field>
@@ -212,7 +212,7 @@ export function ExternalReports() {
         <Card>
           <CardHeader>
             <CardTitle>Encoded Summaries</CardTitle>
-            <CardDescription>Confidential external-report summaries already available in the prototype.</CardDescription>
+            <CardDescription>Confidential external-report summaries already on record in the current system data.</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             {externalReports.length > 0 ? (

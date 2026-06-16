@@ -391,7 +391,7 @@ function normalizeExternalReport(record: any): ExternalReportSummary {
     authorizedForUse: Boolean(record.authorizedForUse),
     keyFindingsSummary: record.keyFindingsSummary || "",
     existingRecommendations: record.existingRecommendations || [],
-    attachmentName: record.attachmentName || "Attach document placeholder",
+    attachmentName: record.attachmentName || "Confidential file reference pending",
     confidentialityNotice: record.confidentialityNotice || confidentialityNotice,
     createdAt: record.createdAt || isoNow(),
     updatedAt: record.updatedAt || record.createdAt || isoNow(),

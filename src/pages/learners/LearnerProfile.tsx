@@ -202,12 +202,27 @@ export function LearnerProfile() {
               </div>
             </CardHeader>
             <CardContent className="space-y-4">
+              {activePlan ? (
+                <div className="rounded-xl border border-green-200 bg-green-50/70 p-4 dark:border-green-900/40 dark:bg-green-900/10">
+                  <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                    <div>
+                      <p className="font-semibold text-slate-900 dark:text-slate-50">{activePlan.targetSkill}</p>
+                      <p className="mt-1 text-sm text-slate-600 dark:text-slate-300">
+                        {activePlan.strategy} | Review on {format(new Date(activePlan.reviewDate), "MMM d, yyyy")}
+                      </p>
+                    </div>
+                    <Button variant="outline" size="sm" onClick={() => navigate("/interventions")}>
+                      View intervention plan
+                    </Button>
+                  </div>
+                </div>
+              ) : null}
               {learnerRecommendations.length > 0 ? (
                 learnerRecommendations.slice(0, 2).map((recommendation) => (
                   <div key={recommendation.id} className="rounded-xl border border-slate-200 p-4 dark:border-slate-800">
                     <div className="flex flex-wrap items-center gap-2">
                       <p className="font-semibold text-slate-900 dark:text-slate-50">{recommendation.targetConcern}</p>
-                      <Badge variant={recommendation.validationStatus.includes("approved") || recommendation.validationStatus.includes("confirmed") ? "success" : "warning"}>
+                      <Badge variant={isPositiveValidationStatus(recommendation.validationStatus) ? "success" : recommendation.validationStatus === "Expert rejected" ? "destructive" : "warning"}>
                         {recommendation.validationStatus}
                       </Badge>
                     </div>
@@ -293,4 +308,8 @@ function HistoryCard({ title, value, className = "" }: { title: string; value: s
       <p className="mt-2 text-sm leading-relaxed text-slate-600 dark:text-slate-300">{value || "No authorized summary recorded."}</p>
     </div>
   );
+}
+
+function isPositiveValidationStatus(status: string) {
+  return ["Expert approved", "Expert revised", "Parent confirmed", "Active intervention"].includes(status);
 }

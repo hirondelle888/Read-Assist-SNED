@@ -113,7 +113,7 @@ export function AssessmentList() {
             <CardContent className="flex flex-col items-center justify-center p-10 text-center">
               <TrendingUp className="mb-3 h-10 w-10 text-slate-300 dark:text-slate-600" />
               <CardTitle>No assessments found</CardTitle>
-              <CardDescription className="mt-2">Record an adapted reading assessment to begin classification and recommendation generation.</CardDescription>
+              <CardDescription className="mt-2">Record an academic reading assessment summary to begin classification and recommendation generation.</CardDescription>
               <Button className="mt-4" onClick={() => navigate("/assessments/new")}>New Assessment</Button>
             </CardContent>
           </Card>

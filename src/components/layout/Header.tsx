@@ -18,6 +18,16 @@ export function Header() {
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false)
   const [query, setQuery] = useState("")
   const [showSearch, setShowSearch] = useState(false)
+  const notificationPreferences = useMemo(() => {
+    const saved = localStorage.getItem("readassist_notification_preferences_v1")
+    return saved
+      ? JSON.parse(saved)
+      : {
+          pendingReviews: true,
+          assessmentReminders: true,
+          progressAlerts: true,
+        }
+  }, [showNotifications])
 
   const searchResults = useMemo(() => {
     if (!query.trim()) return []
@@ -66,35 +76,41 @@ export function Header() {
   }, [assessments, externalReports, interventionPlans, learners, observations, progressRecords, query, recommendations])
 
   const notifications = useMemo(() => {
-    const pending = recommendations
-      .filter(r => ["Draft recommendation", "For expert review", "For parent confirmation"].includes(r.validationStatus))
-      .map(r => {
-        const learner = learners.find(l => l.id === r.learnerId)
-        return {
-          title: `${learner?.code || "Learner"} recommendation needs validation`,
-          detail: r.validationStatus,
-          path: `/recommendations/${r.id}`,
-        }
-      })
-    const modified = interventionPlans
-      .filter(plan => plan.status === "Under review" || new Date(plan.reviewDate) <= new Date())
-      .map(plan => {
-        const learner = learners.find(l => l.id === plan.learnerId)
-        return {
-          title: `${learner?.code || "Learner"} intervention review is due`,
-          detail: `${plan.targetSkill} · ${plan.status}`,
-          path: "/interventions",
-        }
-      })
-    const followUp = learners
-      .filter(l => l.status === "Needs Modified Support")
-      .map(l => ({
-        title: `${l.code} needs modified support`,
-        detail: "Review progress and intervention plan",
-        path: `/learners/${l.id}`,
-      }))
+    const pending = notificationPreferences.pendingReviews
+      ? recommendations
+          .filter(r => ["Draft recommendation", "For expert review", "For parent confirmation"].includes(r.validationStatus))
+          .map(r => {
+            const learner = learners.find(l => l.id === r.learnerId)
+            return {
+              title: `${learner?.code || "Learner"} recommendation needs validation`,
+              detail: r.validationStatus,
+              path: `/recommendations/${r.id}`,
+            }
+          })
+      : []
+    const modified = notificationPreferences.assessmentReminders
+      ? interventionPlans
+          .filter(plan => plan.status === "Under review" || new Date(plan.reviewDate) <= new Date())
+          .map(plan => {
+            const learner = learners.find(l => l.id === plan.learnerId)
+            return {
+              title: `${learner?.code || "Learner"} intervention review is due`,
+              detail: `${plan.targetSkill} · ${plan.status}`,
+              path: "/interventions",
+            }
+          })
+      : []
+    const followUp = notificationPreferences.progressAlerts
+      ? learners
+          .filter(l => l.status === "Needs Modified Support")
+          .map(l => ({
+            title: `${l.code} needs modified support`,
+            detail: "Review progress and intervention plan",
+            path: `/learners/${l.id}`,
+          }))
+      : []
     return [...pending, ...modified, ...followUp].slice(0, 6)
-  }, [interventionPlans, learners, recommendations])
+  }, [interventionPlans, learners, notificationPreferences, recommendations])
 
   const openPath = (path: string) => {
     navigate(path)
@@ -120,7 +136,7 @@ export function Header() {
               if (e.key === "Enter" && searchResults[0]) openPath(searchResults[0].path)
               if (e.key === "Escape") setShowSearch(false)
             }}
-            placeholder="Search learners, report summaries, observations, or recommendations..."
+            placeholder="Search learners, reports, interventions, observations, or recommendations..."
             className="pl-9 bg-slate-50/50 dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-900 dark:text-slate-50"
             aria-label="Search ReadAssist-SNED records"
           />

@@ -59,7 +59,7 @@ export function RecommendationList() {
       <div className="grid gap-4 sm:grid-cols-3">
         <MetricCard label="Generated drafts" value={recommendations.length} tone="default" />
         <MetricCard label="Pending validation" value={pendingValidationCount} tone="warning" />
-        <MetricCard label="Active intervention plans" value={activePlanCount || approvedCount} tone="success" />
+        <MetricCard label="Active intervention plans" value={activePlanCount} tone="success" />
       </div>
 
       <div className="grid gap-4">

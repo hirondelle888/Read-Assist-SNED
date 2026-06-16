@@ -61,7 +61,7 @@ export function Login() {
         <Card>
           <CardHeader>
             <CardTitle>Sign In</CardTitle>
-            <CardDescription>Select your educator role to access the prototype workspace.</CardDescription>
+            <CardDescription>Select your educator role to access the educator workspace.</CardDescription>
           </CardHeader>
           <form onSubmit={handleLogin}>
             <CardContent className="space-y-4">
@@ -111,7 +111,7 @@ export function Login() {
               </div>
               {resetSent && (
                 <div className="rounded-lg border border-blue-200 bg-blue-50 p-3 text-sm text-blue-900 dark:border-blue-800 dark:bg-blue-900/20 dark:text-blue-100">
-                  Password reset instructions were sent to the registered school email for this prototype account.
+                  Password reset instructions were sent to the registered school email on record for this educator account.
                 </div>
               )}
             </CardContent>

@@ -65,7 +65,7 @@ export function Settings() {
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div>
           <h2 className="text-2xl font-bold tracking-tight text-slate-900 dark:text-slate-50">System Settings</h2>
-          <p className="text-slate-500 dark:text-slate-400 mt-1">Manage educator access, accessibility, privacy, and prototype architecture controls.</p>
+          <p className="mt-1 text-slate-500 dark:text-slate-400">Manage educator access, accessibility, privacy, and system architecture controls.</p>
         </div>
         {saved && (
           <div className="flex items-center gap-2 rounded-lg border border-green-200 bg-green-50 px-3 py-2 text-sm font-medium text-green-800 dark:border-green-800 dark:bg-green-900/30 dark:text-green-200">
@@ -90,7 +90,7 @@ export function Settings() {
               <Card>
                 <CardHeader>
                   <CardTitle>Educator Profile</CardTitle>
-                  <CardDescription>This profile is used for teacher-reviewed recommendation records and report metadata.</CardDescription>
+                  <CardDescription>This profile is used for validation records, intervention documentation, and report metadata.</CardDescription>
                 </CardHeader>
                 <CardContent className="grid gap-4 sm:grid-cols-2">
                   <div className="space-y-2">
@@ -129,7 +129,7 @@ export function Settings() {
             <Card>
               <CardHeader>
                 <CardTitle>Role-Based Access Control</CardTitle>
-                <CardDescription>Prototype access is limited to authorized educational roles defined in the thesis scope.</CardDescription>
+                <CardDescription>System access is limited to authorized educational roles defined in the thesis scope.</CardDescription>
               </CardHeader>
               <CardContent className="space-y-3">
                 {authorizedRoles.map(role => (
@@ -176,7 +176,7 @@ export function Settings() {
                 <CardDescription>Notifications focus only on assessment, recommendation, and progress-monitoring work.</CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
-                <ToggleRow label="Pending recommendation reviews" description="Show alerts when generated plans still need teacher verification." checked={notifications.pendingReviews} onChange={() => setNotifications(prev => ({ ...prev, pendingReviews: !prev.pendingReviews }))} />
+                <ToggleRow label="Pending recommendation validation" description="Show alerts when generated recommendations still need expert or parent action." checked={notifications.pendingReviews} onChange={() => setNotifications(prev => ({ ...prev, pendingReviews: !prev.pendingReviews }))} />
                 <ToggleRow label="Assessment reminders" description="Show learners who may need another reading assessment session." checked={notifications.assessmentReminders} onChange={() => setNotifications(prev => ({ ...prev, assessmentReminders: !prev.assessmentReminders }))} />
                 <ToggleRow label="Progress support alerts" description="Show learners classified as needing modified support." checked={notifications.progressAlerts} onChange={() => setNotifications(prev => ({ ...prev, progressAlerts: !prev.progressAlerts }))} />
               </CardContent>
@@ -189,21 +189,21 @@ export function Settings() {
           {activeTab === "privacy" && (
             <div className="space-y-6">
               <Card>
-                <CardHeader>
-                  <CardTitle>Privacy and Security Safeguards</CardTitle>
-                  <CardDescription>ReadAssist-SNED protects learner identity by using learner codes and limiting role access.</CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-3 text-sm text-slate-700 dark:text-slate-300">
-                  <p>Learner records are displayed by learner code rather than public full personal identifiers.</p>
-                  <p>Recommendations are advisory and must be reviewed by qualified educators before use.</p>
-                  <p>The prototype stores local demo data in browser storage. A production deployment should use server-side authentication, encrypted transport, database access control, audit logs, and data privacy approvals.</p>
-                </CardContent>
-              </Card>
+              <CardHeader>
+                <CardTitle>Privacy and Security Safeguards</CardTitle>
+                <CardDescription>ReadAssist-SNED protects learner identity by using learner codes and limiting role access.</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-3 text-sm text-slate-700 dark:text-slate-300">
+                <p>Learner records are displayed by learner code rather than public full personal identifiers.</p>
+                <p>Recommendations are advisory and must be reviewed by qualified educators before use.</p>
+                <p>The current demonstration build stores local data in browser storage. A production deployment should use server-side authentication, encrypted transport, database access control, audit logs, and formal data privacy approvals.</p>
+              </CardContent>
+            </Card>
               <Card>
-                <CardHeader>
-                  <CardTitle>Password and Session</CardTitle>
-                  <CardDescription>Prototype controls for demonstrating account recovery and secure session behavior.</CardDescription>
-                </CardHeader>
+              <CardHeader>
+                <CardTitle>Password and Session</CardTitle>
+                <CardDescription>Current controls for demonstrating account recovery and secure session behavior.</CardDescription>
+              </CardHeader>
                 <CardContent className="space-y-3">
                   <Button variant="outline" className="text-red-600 hover:bg-red-50 hover:text-red-700 dark:border-red-900/50 dark:hover:bg-red-900/20" onClick={sendPasswordReset}>
                     <KeyRound size={16} className="mr-2" /> Send Password Reset Link
@@ -222,15 +222,15 @@ export function Settings() {
             <Card>
               <CardHeader>
                 <CardTitle>Hybrid Decision-Support Architecture</CardTitle>
-                <CardDescription>How the prototype maps to the thesis conceptual framework.</CardDescription>
+                <CardDescription>How the current implementation maps to the thesis conceptual framework.</CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
                 {[
                   ["Input Layer", "Learner profile, adapted assessment scores, teacher observations, accommodations, IEP-aligned goals, and progress records."],
                   ["Processing Layer", "Rule-based reasoning, lightweight NLP difficulty-tag extraction, classification logic, recommendation matching, and progress status computation."],
-                  ["Explanation Layer", "Contributing assessment factors, observation evidence, NLP tags, reasoning steps, confidence, and teacher-review status."],
+                  ["Explanation Layer", "Contributing assessment factors, observation evidence, NLP tags, reasoning steps, confidence, and validation status."],
                   ["Output Layer", "Support-need classifications, intervention recommendations, progress summaries, dashboards, and printable reports."],
-                  ["Prototype Storage", "Local browser storage for thesis demonstration; production should use Django/PostgreSQL or an equivalent secure backend."],
+                  ["Current Storage Pattern", "Local browser storage for thesis demonstration; production should use Django/PostgreSQL or an equivalent secure backend."],
                 ].map(([title, text]) => (
                   <div key={title} className="rounded-lg border border-slate-200 p-4 dark:border-slate-800">
                     <p className="font-semibold text-slate-900 dark:text-slate-50">{title}</p>

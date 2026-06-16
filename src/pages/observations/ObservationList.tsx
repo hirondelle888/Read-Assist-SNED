@@ -88,7 +88,7 @@ export function ObservationList() {
             <CardContent className="flex flex-col items-center justify-center p-10 text-center">
               <Tags className="mb-3 h-10 w-10 text-slate-300 dark:text-slate-600" />
               <CardTitle>No observations found</CardTitle>
-              <CardDescription className="mt-2">Add a teacher observation to support NLP difficulty-tag extraction.</CardDescription>
+              <CardDescription className="mt-2">Add a structured teacher or therapist observation to support support-tag detection and recommendation review.</CardDescription>
               <Button className="mt-4" onClick={() => navigate("/observations/new")}>New Observation</Button>
             </CardContent>
           </Card>

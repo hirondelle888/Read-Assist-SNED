@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useState } from "react"
 import { format } from "date-fns"
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts"
 import { AlertTriangle, ClipboardCheck, RefreshCw, TrendingUp } from "lucide-react"
+import { toast } from "sonner"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/src/components/ui/card"
 import { Badge } from "@/src/components/ui/badge"
 import { Button } from "@/src/components/ui/button"
@@ -79,8 +80,18 @@ export function ProgressMonitoring() {
   const currentStatus = linkedRecommendation?.progressStatus || learner?.status || "Stable"
 
   const saveProgress = () => {
-    if (!selectedPlan || !learner || !linkedRecommendation) return
-    if (!form.taskCompletion.trim() || !form.attentionEngagement.trim() || !form.comprehensionAccuracy.trim() || !form.reason.trim()) return
+    if (!selectedPlan || !learner || !linkedRecommendation) {
+      toast.error("No intervention plan selected", {
+        description: "Select an active intervention plan before saving a progress update.",
+      })
+      return
+    }
+    if (!form.taskCompletion.trim() || !form.attentionEngagement.trim() || !form.comprehensionAccuracy.trim() || !form.reason.trim()) {
+      toast.error("Complete the required progress fields", {
+        description: "Task completion, engagement, accuracy, and the reason for action are required.",
+      })
+      return
+    }
 
     addProgressRecord({
       learnerId: learner.id,
@@ -125,6 +136,10 @@ export function ProgressMonitoring() {
             ? "Stable"
             : "Needs Modified Support",
       teacherNotes: form.teacherTherapistNotes.trim() || linkedRecommendation.teacherNotes,
+    })
+
+    toast.success("Progress update saved", {
+      description: `${learner.code} now has an updated intervention monitoring record.`,
     })
 
     setForm({
@@ -190,8 +205,8 @@ export function ProgressMonitoring() {
               </div>
             ) : (
               <div className="rounded-xl border border-dashed border-slate-300 p-5 text-sm text-slate-500 dark:border-slate-700 dark:text-slate-400">
-                No intervention plan available yet. Activate a recommendation first.
-              </div>
+              No intervention plan is available yet. Activate a validated recommendation first.
+            </div>
             )}
           </CardContent>
         </Card>
@@ -313,7 +328,7 @@ export function ProgressMonitoring() {
             </ResponsiveContainer>
           ) : (
             <div className="flex h-full items-center justify-center text-slate-500 dark:text-slate-400">
-              No progress records yet for the selected plan.
+              No progress records are available yet for the selected plan.
             </div>
           )}
         </CardContent>

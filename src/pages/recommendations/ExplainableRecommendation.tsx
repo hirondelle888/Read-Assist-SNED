@@ -160,11 +160,18 @@ export function ExplainableRecommendation() {
       startDate: new Date().toISOString().slice(0, 10),
       reviewDate: planReviewDate,
       status: "Active",
-      notes: reviewNotes.trim() || "Activated after expert and parent validation.",
+      notes: reviewNotes.trim() || "Activated after expert review and required family validation.",
     })
 
     saveValidation("Active intervention", { parentConfirmation: "Confirmed" })
   }
+
+  const canActivatePlan =
+    !linkedPlan &&
+    (
+      rec.validationStatus === "Parent confirmed" ||
+      (!rec.requiresParentConfirmation && ["Expert approved", "Expert revised"].includes(rec.validationStatus))
+    )
 
   return (
     <div className="space-y-6">
@@ -395,13 +402,13 @@ export function ExplainableRecommendation() {
               ) : null}
               <Button
                 className="w-full"
-                disabled={!["Parent confirmed", "Expert approved", "Expert revised", "For parent confirmation"].includes(rec.validationStatus) || Boolean(linkedPlan)}
+                disabled={!canActivatePlan}
                 onClick={activatePlan}
               >
                 <FolderCheck size={16} className="mr-2" /> Activate Intervention Plan
               </Button>
               <p className="text-xs text-slate-500 dark:text-slate-400">
-                Activation is intended only after the recommendation has been reviewed and validated by the appropriate school or center team.
+                Activation is available only after expert validation and, when required, parent or guardian confirmation.
               </p>
             </CardContent>
           </Card>
