@@ -1,49 +1,49 @@
-import React, { useState } from "react"
-import { useNavigate } from "react-router-dom"
-import { Search, Plus, UserPlus, Filter } from "lucide-react"
-import { Button } from "@/src/components/ui/button"
-import { Input } from "@/src/components/ui/input"
-import { Badge } from "@/src/components/ui/badge"
-import { useData } from "@/src/contexts/DataContext"
+import React, { useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { Filter, Search, ShieldCheck, UserPlus } from "lucide-react";
+import { Badge } from "@/src/components/ui/badge";
+import { Button } from "@/src/components/ui/button";
+import { Input } from "@/src/components/ui/input";
+import { prototypeAssumptionNote } from "@/src/data";
+import { useData } from "@/src/contexts/DataContext";
 
 export function LearnerList() {
-  const navigate = useNavigate()
-  const { learners } = useData()
-  const [searchTerm, setSearchTerm] = useState("")
-  const [filterLevel, setFilterLevel] = useState("All")
-  const [page, setPage] = useState(1)
-  const pageSize = 6
+  const navigate = useNavigate();
+  const { learners } = useData();
+  const [searchTerm, setSearchTerm] = useState("");
+  const [filterLevel, setFilterLevel] = useState("All");
+  const [page, setPage] = useState(1);
+  const pageSize = 6;
 
-  const getStatusBadge = (status: string) => {
-    switch (status) {
-      case "Improving": return <Badge variant="success">Improving</Badge>
-      case "Stable": return <Badge variant="secondary">Stable</Badge>
-      case "Needs Modified Support": return <Badge variant="destructive">Needs Review</Badge>
-      default: return <Badge variant="outline">{status}</Badge>
-    }
-  }
+  const filteredLearners = learners.filter((learner) => {
+    const haystack = [
+      learner.code,
+      learner.displayName,
+      learner.anonymizedId,
+      learner.gradeLevel,
+      learner.diagnosisStatus,
+      learner.readingConcerns.join(" "),
+      learner.supportNeeds,
+    ]
+      .join(" ")
+      .toLowerCase();
+    const matchesSearch = haystack.includes(searchTerm.toLowerCase());
+    if (filterLevel === "All") return matchesSearch;
+    return matchesSearch && learner.supportNeeds.includes(filterLevel);
+  });
 
-  const getSupportBadge = (level: string) => {
-    if (level.includes("High")) return <Badge variant="destructive">High</Badge>
-    if (level.includes("Moderate")) return <Badge variant="warning">Moderate</Badge>
-    return <Badge variant="success">Low</Badge>
-  }
-
-  const filteredLearners = learners.filter(l => {
-    const matchesSearch = l.code.toLowerCase().includes(searchTerm.toLowerCase())
-    if (filterLevel === "All") return matchesSearch
-    return matchesSearch && l.supportNeeds.includes(filterLevel)
-  })
-  const totalPages = Math.max(1, Math.ceil(filteredLearners.length / pageSize))
-  const safePage = Math.min(page, totalPages)
-  const pagedLearners = filteredLearners.slice((safePage - 1) * pageSize, safePage * pageSize)
+  const totalPages = Math.max(1, Math.ceil(filteredLearners.length / pageSize));
+  const safePage = Math.min(page, totalPages);
+  const pagedLearners = filteredLearners.slice((safePage - 1) * pageSize, safePage * pageSize);
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+    <div className="space-y-6 pb-10">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div>
-          <h2 className="text-2xl font-bold tracking-tight text-slate-900 dark:text-slate-50">Learners Directory</h2>
-          <p className="text-slate-500 dark:text-slate-400 mt-1">Manage and monitor reading comprehension interventions.</p>
+          <h2 className="text-2xl font-bold tracking-tight text-slate-900 dark:text-slate-50">Learner Support Directory</h2>
+          <p className="mt-1 max-w-3xl text-slate-500 dark:text-slate-400">
+            View learner support profiles, privacy flags, consent status, and current reading-intervention needs in one place.
+          </p>
         </div>
         <Button onClick={() => navigate("/learners/new")} className="flex items-center gap-2">
           <UserPlus size={16} />
@@ -51,81 +51,139 @@ export function LearnerList() {
         </Button>
       </div>
 
-      <div className="bg-white dark:bg-slate-900 rounded-xl shadow-sm border border-slate-200 dark:border-slate-800">
-        <div className="p-4 border-b border-slate-100 dark:border-slate-800 flex flex-col sm:flex-row gap-4 justify-between">
-          <div className="relative flex-1 max-w-sm">
+      <div className="rounded-xl border border-blue-100 bg-blue-50/80 p-4 text-sm text-blue-900 dark:border-blue-900/60 dark:bg-blue-950/30 dark:text-blue-100">
+        <div className="flex items-start gap-3">
+          <ShieldCheck size={18} className="mt-0.5 shrink-0" />
+          <p>{prototypeAssumptionNote}</p>
+        </div>
+      </div>
+
+      <div className="rounded-xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900">
+        <div className="flex flex-col gap-4 border-b border-slate-100 p-4 dark:border-slate-800 sm:flex-row sm:items-center sm:justify-between">
+          <div className="relative flex-1 max-w-md">
             <Search className="absolute left-3 top-2.5 h-4 w-4 text-slate-400" />
-            <Input 
-              placeholder="Search by Learner Code..." 
-              className="pl-9" 
+            <Input
+              placeholder="Search learner code, profile, concern, or status..."
+              className="pl-9"
               value={searchTerm}
-              onChange={(e) => {
-                setSearchTerm(e.target.value)
-                setPage(1)
+              onChange={(event) => {
+                setSearchTerm(event.target.value);
+                setPage(1);
               }}
             />
           </div>
           <div className="flex items-center gap-2">
-            <select 
+            <select
               value={filterLevel}
-              onChange={(e) => {
-                setFilterLevel(e.target.value)
-                setPage(1)
+              onChange={(event) => {
+                setFilterLevel(event.target.value);
+                setPage(1);
               }}
-              className="h-10 rounded-md border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 px-3 py-2 text-sm text-slate-700 dark:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-400"
+              className="h-10 rounded-md border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 dark:border-slate-800 dark:bg-slate-900 dark:text-white"
             >
-              <option value="All">All Support Levels</option>
-              <option value="High">High Support</option>
-              <option value="Moderate">Moderate Support</option>
-              <option value="Low">Low Support</option>
+              <option value="All">All support levels</option>
+              <option value="High">High support</option>
+              <option value="Moderate">Moderate support</option>
+              <option value="Low">Low support</option>
             </select>
-            <Button variant="outline" className="flex items-center gap-2 hover:bg-slate-100 dark:hover:bg-slate-800" onClick={() => {setSearchTerm(""); setFilterLevel("All"); setPage(1)}}>
-              <Filter size={16} />
+            <Button variant="outline" onClick={() => {
+              setSearchTerm("");
+              setFilterLevel("All");
+              setPage(1);
+            }}>
+              <Filter size={16} className="mr-2" />
               Reset
             </Button>
           </div>
         </div>
-        
+
         <div className="overflow-x-auto">
-          <table className="w-full text-sm text-left">
-            <thead className="bg-slate-50 dark:bg-slate-800/50 text-slate-600 dark:text-slate-300 font-medium border-b border-slate-200 dark:border-slate-800">
+          <table className="w-full text-left text-sm">
+            <thead className="border-b border-slate-200 bg-slate-50 text-slate-600 dark:border-slate-800 dark:bg-slate-800/50 dark:text-slate-300">
               <tr>
-                <th className="px-6 py-4">Learner Code</th>
-                <th className="px-6 py-4">Grade</th>
-                <th className="px-6 py-4">Support Need</th>
-                <th className="px-6 py-4">Status</th>
-                <th className="px-6 py-4 text-right">Actions</th>
+                <th className="px-6 py-4">Learner</th>
+                <th className="px-6 py-4">Support Profile</th>
+                <th className="px-6 py-4">Consent / Access</th>
+                <th className="px-6 py-4">Workflow Status</th>
+                <th className="px-6 py-4 text-right">Action</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-              {filteredLearners.length > 0 ? pagedLearners.map((learner) => (
-                <tr key={learner.id} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/50 transition-colors">
-                  <td className="px-6 py-4 font-medium text-slate-900 dark:text-slate-50">{learner.code}</td>
-                  <td className="px-6 py-4 text-slate-600 dark:text-slate-300">{learner.gradeLevel}</td>
-                  <td className="px-6 py-4">{getSupportBadge(learner.supportNeeds)}</td>
-                  <td className="px-6 py-4">{getStatusBadge(learner.status)}</td>
-                  <td className="px-6 py-4 text-right">
-                    <Button variant="ghost" size="sm" onClick={() => navigate(`/learners/${learner.id}`)}>
-                      View Profile
-                    </Button>
-                  </td>
-                </tr>
-              )) : (
+              {pagedLearners.length > 0 ? (
+                pagedLearners.map((learner) => (
+                  <tr key={learner.id} className="align-top hover:bg-slate-50/70 dark:hover:bg-slate-800/40">
+                    <td className="px-6 py-4">
+                      <div className="min-w-[220px]">
+                        <p className="font-semibold text-slate-900 dark:text-slate-50">
+                          {learner.privacyMode === "Anonymized Record" ? learner.anonymizedId : learner.displayName}
+                        </p>
+                        <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+                          {learner.code} | {learner.gradeLevel} | {learner.age} yrs
+                        </p>
+                      </div>
+                    </td>
+                    <td className="px-6 py-4">
+                      <div className="space-y-2">
+                        <Badge variant={learner.supportNeeds.includes("High") ? "destructive" : learner.supportNeeds.includes("Moderate") ? "warning" : "success"}>
+                          {learner.supportNeeds}
+                        </Badge>
+                        <p className="text-xs leading-relaxed text-slate-600 dark:text-slate-300">{learner.disabilityCategory}</p>
+                        <p className="text-xs text-slate-500 dark:text-slate-400">
+                          {learner.readingConcerns.slice(0, 2).join(", ")}
+                          {learner.readingConcerns.length > 2 ? "..." : ""}
+                        </p>
+                      </div>
+                    </td>
+                    <td className="px-6 py-4">
+                      <div className="space-y-2">
+                        <Badge variant={learner.consentStatus === "Granted" ? "success" : learner.consentStatus === "Pending" ? "warning" : "destructive"}>
+                          {learner.consentStatus}
+                        </Badge>
+                        <Badge variant={learner.dataAccessSensitivity === "Highly restricted" ? "destructive" : learner.dataAccessSensitivity === "Restricted" ? "warning" : "secondary"}>
+                          {learner.dataAccessSensitivity}
+                        </Badge>
+                      </div>
+                    </td>
+                    <td className="px-6 py-4">
+                      <div className="space-y-2">
+                        <Badge variant={learner.status === "Improving" ? "success" : learner.status === "Stable" ? "secondary" : "warning"}>
+                          {learner.status}
+                        </Badge>
+                        <p className="text-xs text-slate-500 dark:text-slate-400">{learner.diagnosisStatus}</p>
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 text-right">
+                      <Button variant="ghost" size="sm" onClick={() => navigate(`/learners/${learner.id}`)}>
+                        View profile
+                      </Button>
+                    </td>
+                  </tr>
+                ))
+              ) : (
                 <tr>
-                  <td colSpan={5} className="px-6 py-8 text-center text-slate-500 dark:text-slate-400">No learners found matching criteria.</td>
+                  <td colSpan={5} className="px-6 py-10 text-center text-slate-500 dark:text-slate-400">
+                    No learner profiles match the current filters.
+                  </td>
                 </tr>
               )}
             </tbody>
           </table>
         </div>
-        <div className="p-4 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between text-sm text-slate-500 dark:text-slate-400">
-          Showing {filteredLearners.length === 0 ? 0 : (safePage - 1) * pageSize + 1}-{Math.min(safePage * pageSize, filteredLearners.length)} of {filteredLearners.length} learners
+
+        <div className="flex items-center justify-between border-t border-slate-100 p-4 text-sm text-slate-500 dark:border-slate-800 dark:text-slate-400">
+          <span>
+            Showing {filteredLearners.length === 0 ? 0 : (safePage - 1) * pageSize + 1}-{Math.min(safePage * pageSize, filteredLearners.length)} of {filteredLearners.length} learners
+          </span>
           <div className="flex gap-2">
-            <Button variant="outline" size="sm" disabled={safePage <= 1} onClick={() => setPage(prev => Math.max(1, prev - 1))}>Previous</Button>
-            <Button variant="outline" size="sm" disabled={safePage >= totalPages} onClick={() => setPage(prev => Math.min(totalPages, prev + 1))}>Next</Button>
+            <Button variant="outline" size="sm" disabled={safePage <= 1} onClick={() => setPage((prev) => Math.max(1, prev - 1))}>
+              Previous
+            </Button>
+            <Button variant="outline" size="sm" disabled={safePage >= totalPages} onClick={() => setPage((prev) => Math.min(totalPages, prev + 1))}>
+              Next
+            </Button>
           </div>
         </div>
       </div>
     </div>
-  )
+  );
 }

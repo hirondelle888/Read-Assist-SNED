@@ -7,12 +7,14 @@ import { Dashboard } from "./pages/Dashboard"
 import { LearnerList } from "./pages/learners/LearnerList"
 import { LearnerForm } from "./pages/learners/LearnerForm"
 import { LearnerProfile } from "./pages/learners/LearnerProfile"
+import { ExternalReports } from "./pages/external-reports/ExternalReports"
 import { AssessmentWizard } from "./pages/assessments/AssessmentWizard"
 import { AssessmentList } from "./pages/assessments/AssessmentList"
 import { ObservationForm } from "./pages/observations/ObservationForm"
 import { ObservationList } from "./pages/observations/ObservationList"
 import { RecommendationList } from "./pages/recommendations/RecommendationList"
 import { ExplainableRecommendation } from "./pages/recommendations/ExplainableRecommendation"
+import { InterventionPlans } from "./pages/interventions/InterventionPlans"
 import { ProgressMonitoring } from "./pages/progress/ProgressMonitoring"
 import { Reports } from "./pages/reports/Reports"
 import { Settings } from "./pages/settings/Settings"
@@ -35,6 +37,8 @@ export default function App() {
             <Route path="/learners/:id/edit" element={<LearnerForm />} />
             <Route path="/learners/:id" element={<LearnerProfile />} />
 
+            <Route path="/external-reports" element={<ExternalReports />} />
+
             <Route path="/assessments" element={<AssessmentList />} />
             <Route path="/assessments/new" element={<AssessmentWizard />} />
 
@@ -43,6 +47,7 @@ export default function App() {
 
             <Route path="/recommendations" element={<RecommendationList />} />
             <Route path="/recommendations/:id" element={<ExplainableRecommendation />} />
+            <Route path="/interventions" element={<InterventionPlans />} />
 
             <Route path="/progress" element={<ProgressMonitoring />} />
 

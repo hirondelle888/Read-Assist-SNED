@@ -1,7 +1,7 @@
 import React, { useState } from "react"
 import { createPortal } from "react-dom"
 import { NavLink, useNavigate } from "react-router-dom"
-import { LayoutDashboard, Users, FileText, Eye, BrainCircuit, Lightbulb, LineChart, FileSpreadsheet, Settings, LogOut, ChevronLeft, ChevronRight } from "lucide-react"
+import { LayoutDashboard, Users, FileText, Eye, BrainCircuit, Lightbulb, LineChart, FileSpreadsheet, Settings, LogOut, ChevronLeft, FileBadge2, FolderCheck } from "lucide-react"
 import { useAuth } from "@/src/contexts/AuthContext"
 
 export function Sidebar() {
@@ -13,9 +13,11 @@ export function Sidebar() {
   const navItems = [
     { to: "/dashboard", icon: <LayoutDashboard size={20} />, label: "Dashboard" },
     { to: "/learners", icon: <Users size={20} />, label: "Learners" },
+    { to: "/external-reports", icon: <FileBadge2 size={20} />, label: "External Reports" },
     { to: "/assessments", icon: <FileText size={20} />, label: "Assessments" },
     { to: "/observations", icon: <Eye size={20} />, label: "Observations" },
     { to: "/recommendations", icon: <Lightbulb size={20} />, label: "Recommendations" },
+    { to: "/interventions", icon: <FolderCheck size={20} />, label: "Interventions" },
     { to: "/progress", icon: <LineChart size={20} />, label: "Progress" },
     { to: "/reports", icon: <FileSpreadsheet size={20} />, label: "Reports" },
     { to: "/settings", icon: <Settings size={20} />, label: "Settings" }

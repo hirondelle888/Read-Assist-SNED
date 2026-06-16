@@ -1,16 +1,17 @@
 import React, { useMemo } from "react"
-import { Users, FileText, AlertCircle, TrendingUp, Presentation, CheckCircle, Activity } from "lucide-react"
+import { Users, FileText, AlertCircle, TrendingUp, Presentation, CheckCircle, Activity, FileBadge2, FolderCheck } from "lucide-react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/src/components/ui/card"
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts"
 import { useTheme } from "@/src/components/ThemeProvider"
 import { useData } from "@/src/contexts/DataContext"
+import { prototypeAssumptionNote } from "@/src/data"
 import { format } from "date-fns"
 import { useNavigate } from "react-router-dom"
 
 export function Dashboard() {
   const navigate = useNavigate()
   const { theme } = useTheme()
-  const { learners, assessments, recommendations, observations } = useData()
+  const { learners, assessments, recommendations, observations, externalReports, interventionPlans, progressRecords } = useData()
   
   const isDark = theme === "dark" || (theme === "system" && document.documentElement.classList.contains("dark"))
   const textColor = isDark ? "#e2e8f0" : "#64748b"
@@ -19,8 +20,11 @@ export function Dashboard() {
 
   const totalLearners = learners.length;
   // Unique learners receiving interventions
-  const activeInterventions = new Set(recommendations.map(r => r.learnerId)).size;
-  const needingReview = recommendations.filter(r => r.teacherReviewStatus === "Pending Review").length;
+  const activeInterventions = interventionPlans.filter(plan => plan.status === "Active").length;
+  const needingReview = recommendations.filter(r => ["Draft recommendation", "For expert review", "For parent confirmation"].includes(r.validationStatus)).length;
+  const reportsAvailable = externalReports.filter(report => report.authorizedForUse).length;
+  const progressDue = interventionPlans.filter(plan => new Date(plan.reviewDate) <= new Date("2026-06-30")).length;
+  const reassessmentNeeded = learners.filter(l => l.status === "Needs Modified Support").length;
   const improvingCount = learners.filter(l => l.status === "Improving").length;
   const improvingPercentage = totalLearners > 0 ? Math.round((improvingCount / totalLearners) * 100) : 0;
 
@@ -89,10 +93,14 @@ export function Dashboard() {
     <div className="space-y-6">
       <div>
         <h2 className="text-2xl font-bold tracking-tight text-slate-900 dark:text-slate-50">Dashboard</h2>
-        <p className="text-slate-500 dark:text-slate-400 mt-1">Teacher-centered view of assessments, observations, support classifications, and reviewed interventions.</p>
+        <p className="mt-1 text-slate-500 dark:text-slate-400">Teacher-centered view of learner support records, validations, interventions, and follow-up actions.</p>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+      <div className="rounded-2xl border border-slate-200 bg-slate-50/70 p-4 text-sm leading-7 text-slate-700 dark:border-slate-800 dark:bg-slate-900/60 dark:text-slate-300">
+        <span className="font-semibold text-slate-900 dark:text-slate-100">Prototype note:</span> {prototypeAssumptionNote}
+      </div>
+
+      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-6">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Total Learners</CardTitle>
@@ -110,7 +118,7 @@ export function Dashboard() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-slate-900 dark:text-slate-50">{activeInterventions}</div>
-            <p className="text-xs text-slate-500 dark:text-slate-400">Currently receiving support</p>
+            <p className="text-xs text-slate-500 dark:text-slate-400">Validated and active plans</p>
           </CardContent>
         </Card>
         <Card>
@@ -120,7 +128,7 @@ export function Dashboard() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-red-600 dark:text-red-400">{needingReview}</div>
-            <p className="text-xs text-slate-500 dark:text-slate-400">Recommendations awaiting teacher action</p>
+            <p className="text-xs text-slate-500 dark:text-slate-400">Drafts awaiting expert or parent action</p>
           </CardContent>
         </Card>
         <Card>
@@ -133,27 +141,61 @@ export function Dashboard() {
             <p className="text-xs text-slate-500 dark:text-slate-400">Of total learners improving</p>
           </CardContent>
         </Card>
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Reports Available</CardTitle>
+            <FileBadge2 className="h-4 w-4 text-slate-500 dark:text-slate-400" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-slate-900 dark:text-slate-50">{reportsAvailable}</div>
+            <p className="text-xs text-slate-500 dark:text-slate-400">Authorized external summaries on file</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Follow-up Due</CardTitle>
+            <FolderCheck className="h-4 w-4 text-slate-500 dark:text-slate-400" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-slate-900 dark:text-slate-50">{progressDue}</div>
+            <p className="text-xs text-slate-500 dark:text-slate-400">{reassessmentNeeded} learners need reassessment or modified support</p>
+          </CardContent>
+        </Card>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-3">
+      <div className="grid gap-4 md:grid-cols-5">
+        <QuickActionCard
+          title="Add Learner"
+          description="Create a learner support profile with consent and sensitivity controls."
+          action="Open learner form"
+          onClick={() => navigate("/learners/new")}
+          tone="default"
+        />
+        <QuickActionCard
+          title="Encode Report Summary"
+          description="Add authorized Dev Ped, academic, therapy, or SPED report summaries."
+          action="Open external reports"
+          onClick={() => navigate("/external-reports")}
+          tone="default"
+        />
         <Card className="border-blue-200 dark:border-blue-900/60">
           <CardContent className="p-4">
-            <p className="text-sm font-semibold text-slate-900 dark:text-slate-50">Record Assessment</p>
-            <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">Enter adapted reading scores across the five thesis domains.</p>
+            <p className="text-sm font-semibold text-slate-900 dark:text-slate-50">Add Assessment Summary</p>
+            <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">Record academic reading indicators, accommodations, and support estimates.</p>
             <button onClick={() => navigate("/assessments/new")} className="mt-3 text-sm font-medium text-blue-700 hover:text-blue-800 dark:text-blue-400">Start assessment</button>
           </CardContent>
         </Card>
         <Card className="border-green-200 dark:border-green-900/60">
           <CardContent className="p-4">
             <p className="text-sm font-semibold text-slate-900 dark:text-slate-50">Add Observation</p>
-            <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">Capture reading behavior and difficulty indicators for NLP tagging.</p>
+            <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">Capture teacher or therapist observations, prompting level, and response patterns.</p>
             <button onClick={() => navigate("/observations/new")} className="mt-3 text-sm font-medium text-blue-700 hover:text-blue-800 dark:text-blue-400">Record observation</button>
           </CardContent>
         </Card>
         <Card className="border-amber-200 dark:border-amber-900/60">
           <CardContent className="p-4">
             <p className="text-sm font-semibold text-slate-900 dark:text-slate-50">Review Recommendations</p>
-            <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">Approve or revise advisory intervention plans before use.</p>
+            <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">Validate system suggestions before activating intervention plans.</p>
             <button onClick={() => navigate("/recommendations")} className="mt-3 text-sm font-medium text-blue-700 hover:text-blue-800 dark:text-blue-400">Open review queue</button>
           </CardContent>
         </Card>
@@ -205,7 +247,7 @@ export function Dashboard() {
         </Card>
       </div>
       
-      <h3 className="text-lg font-medium text-slate-900 dark:text-slate-50 mt-6">Recent Activities</h3>
+      <h3 className="mt-6 text-lg font-medium text-slate-900 dark:text-slate-50">Recent Activities</h3>
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
         {recentActivities.length > 0 ? recentActivities.map((act, i) => (
           <Card key={i} className="h-full">
@@ -226,5 +268,31 @@ export function Dashboard() {
         )}
       </div>
     </div>
+  )
+}
+
+function QuickActionCard({
+  title,
+  description,
+  action,
+  onClick,
+  tone,
+}: {
+  title: string
+  description: string
+  action: string
+  onClick: () => void
+  tone: "default"
+}) {
+  return (
+    <Card className="border-slate-200 dark:border-slate-800">
+      <CardContent className="p-4">
+        <p className="text-sm font-semibold text-slate-900 dark:text-slate-50">{title}</p>
+        <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">{description}</p>
+        <button onClick={onClick} className="mt-3 text-sm font-medium text-blue-700 hover:text-blue-800 dark:text-blue-400">
+          {action}
+        </button>
+      </CardContent>
+    </Card>
   )
 }

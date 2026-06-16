@@ -35,8 +35,8 @@ export function AssessmentList() {
     <div className="space-y-6">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h2 className="text-2xl font-bold tracking-tight text-slate-900 dark:text-slate-50">Assessment Management</h2>
-          <p className="text-slate-500 dark:text-slate-400 mt-1">Review adapted reading comprehension sessions across the five thesis domains.</p>
+          <h2 className="text-2xl font-bold tracking-tight text-slate-900 dark:text-slate-50">Academic Reading Assessment Summaries</h2>
+          <p className="text-slate-500 dark:text-slate-400 mt-1">Review reading-comprehension profiles, contextual task indicators, and teacher-overridden support estimates.</p>
         </div>
         <Button onClick={() => navigate("/assessments/new")} className="gap-2">
           <Plus size={16} /> New Assessment
@@ -50,7 +50,7 @@ export function AssessmentList() {
             <Input
               value={query}
               onChange={(e) => setQuery(e.target.value)}
-              placeholder="Search by learner code, domain, or summary..."
+            placeholder="Search learner code, source, support estimate, or concern..."
               className="pl-9"
             />
           </div>
@@ -82,7 +82,7 @@ export function AssessmentList() {
                       {recommendation && <Badge variant={recommendation.classifiedSupportLevel.includes("High") ? "destructive" : recommendation.classifiedSupportLevel.includes("Moderate") ? "warning" : "success"}>{recommendation.classifiedSupportLevel}</Badge>}
                     </div>
                     <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
-                      {format(new Date(assessment.date), "MMM d, yyyy")}
+                      {format(new Date(assessment.date), "MMM d, yyyy")} | {assessment.source} | {assessment.responseMode}
                     </p>
                     <div className="mt-3 max-w-4xl">
                       <AssessmentSummaryPanel
@@ -92,6 +92,10 @@ export function AssessmentList() {
                         lowestDomains={assessment.lowestDomains}
                         compact
                       />
+                    </div>
+                    <div className="mt-3 flex flex-wrap gap-2">
+                      {assessment.concernTags.map((tag) => <Badge key={tag} variant="outline">{tag}</Badge>)}
+                      {assessment.overrideSupportNeedEstimate && <Badge variant="warning">Teacher override: {assessment.overrideSupportNeedEstimate}</Badge>}
                     </div>
                   </div>
                 </div>

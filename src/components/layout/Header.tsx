@@ -1,6 +1,6 @@
 import React, { useMemo, useState } from "react"
 import { createPortal } from "react-dom"
-import { Bell, ClipboardList, FileText, Moon, Search, Sun, UserRound } from "lucide-react"
+import { Bell, ClipboardList, FileBadge2, FileText, FolderCheck, Moon, Search, Sun, UserRound } from "lucide-react"
 import { Input } from "@/src/components/ui/input"
 import { Badge } from "@/src/components/ui/badge"
 import { useTheme } from "../ThemeProvider"
@@ -11,7 +11,7 @@ import { useData } from "@/src/contexts/DataContext"
 export function Header() {
   const { theme, setTheme } = useTheme()
   const { user, logout } = useAuth()
-  const { learners, assessments, observations, recommendations } = useData()
+  const { learners, assessments, observations, recommendations, externalReports, interventionPlans, progressRecords } = useData()
   const navigate = useNavigate()
   const [showNotifications, setShowNotifications] = useState(false)
   const [showProfile, setShowProfile] = useState(false)
@@ -23,13 +23,25 @@ export function Header() {
     if (!query.trim()) return []
     const term = query.toLowerCase()
     const learnerResults = learners
-      .filter(l => `${l.code} ${l.gradeLevel} ${l.readingConcerns.join(" ")} ${l.supportNeeds}`.toLowerCase().includes(term))
+      .filter(l => `${l.code} ${l.displayName} ${l.anonymizedId} ${l.gradeLevel} ${l.readingConcerns.join(" ")} ${l.supportNeeds} ${l.diagnosisStatus}`.toLowerCase().includes(term))
       .map(l => ({ label: l.code, detail: `${l.gradeLevel} - ${l.supportNeeds}`, icon: UserRound, path: `/learners/${l.id}` }))
-    const recommendationResults = recommendations
-      .filter(r => `${r.classifiedSupportLevel} ${r.recommendedStrategies.join(" ")} ${r.teacherReviewStatus}`.toLowerCase().includes(term))
+    const reportResults = externalReports
+      .filter(r => `${r.reportType} ${r.source} ${r.keyFindingsSummary} ${r.existingRecommendations.join(" ")}`.toLowerCase().includes(term))
       .map(r => {
         const learner = learners.find(l => l.id === r.learnerId)
-        return { label: `Recommendation for ${learner?.code || "learner"}`, detail: r.teacherReviewStatus, icon: FileText, path: `/recommendations/${r.id}` }
+        return { label: `${r.reportType} - ${learner?.code || "learner"}`, detail: r.authorizedForUse ? "Authorized report summary" : "Restricted report summary", icon: FileBadge2, path: "/external-reports" }
+      })
+    const recommendationResults = recommendations
+      .filter(r => `${r.classifiedSupportLevel} ${r.recommendedStrategies.join(" ")} ${r.validationStatus}`.toLowerCase().includes(term))
+      .map(r => {
+        const learner = learners.find(l => l.id === r.learnerId)
+        return { label: `Recommendation for ${learner?.code || "learner"}`, detail: r.validationStatus, icon: FileText, path: `/recommendations/${r.id}` }
+      })
+    const interventionResults = interventionPlans
+      .filter(plan => `${plan.targetSkill} ${plan.strategy} ${plan.status} ${plan.responsiblePerson}`.toLowerCase().includes(term))
+      .map(plan => {
+        const learner = learners.find(l => l.id === plan.learnerId)
+        return { label: `Intervention plan - ${learner?.code || "learner"}`, detail: `${plan.status} · ${plan.targetSkill}`, icon: FolderCheck, path: "/interventions" }
       })
     const assessmentResults = assessments
       .filter(a => `${a.summary} ${a.lowestDomains.join(" ")}`.toLowerCase().includes(term))
@@ -43,30 +55,46 @@ export function Header() {
         const learner = learners.find(l => l.id === o.learnerId)
         return { label: `Observation - ${learner?.code || "learner"}`, detail: o.nlpTags.slice(0, 2).join(", ") || "Teacher observation", icon: ClipboardList, path: "/observations" }
       })
+    const progressResults = progressRecords
+      .filter(record => `${record.targetSkill} ${record.recommendedAction} ${record.reason}`.toLowerCase().includes(term))
+      .map(record => {
+        const learner = learners.find(l => l.id === record.learnerId)
+        return { label: `Progress update - ${learner?.code || "learner"}`, detail: `${record.recommendedAction} · ${record.targetSkill}`, icon: ClipboardList, path: "/progress" }
+      })
 
-    return [...learnerResults, ...recommendationResults, ...assessmentResults, ...observationResults].slice(0, 6)
-  }, [assessments, learners, observations, query, recommendations])
+    return [...learnerResults, ...reportResults, ...recommendationResults, ...interventionResults, ...assessmentResults, ...observationResults, ...progressResults].slice(0, 6)
+  }, [assessments, externalReports, interventionPlans, learners, observations, progressRecords, query, recommendations])
 
   const notifications = useMemo(() => {
     const pending = recommendations
-      .filter(r => r.teacherReviewStatus === "Pending Review")
+      .filter(r => ["Draft recommendation", "For expert review", "For parent confirmation"].includes(r.validationStatus))
       .map(r => {
         const learner = learners.find(l => l.id === r.learnerId)
         return {
-          title: `${learner?.code || "Learner"} recommendation needs review`,
-          detail: r.classifiedSupportLevel,
+          title: `${learner?.code || "Learner"} recommendation needs validation`,
+          detail: r.validationStatus,
           path: `/recommendations/${r.id}`,
         }
       })
-    const modified = learners
+    const modified = interventionPlans
+      .filter(plan => plan.status === "Under review" || new Date(plan.reviewDate) <= new Date())
+      .map(plan => {
+        const learner = learners.find(l => l.id === plan.learnerId)
+        return {
+          title: `${learner?.code || "Learner"} intervention review is due`,
+          detail: `${plan.targetSkill} · ${plan.status}`,
+          path: "/interventions",
+        }
+      })
+    const followUp = learners
       .filter(l => l.status === "Needs Modified Support")
       .map(l => ({
         title: `${l.code} needs modified support`,
         detail: "Review progress and intervention plan",
         path: `/learners/${l.id}`,
       }))
-    return [...pending, ...modified].slice(0, 6)
-  }, [learners, recommendations])
+    return [...pending, ...modified, ...followUp].slice(0, 6)
+  }, [interventionPlans, learners, recommendations])
 
   const openPath = (path: string) => {
     navigate(path)
@@ -92,7 +120,7 @@ export function Header() {
               if (e.key === "Enter" && searchResults[0]) openPath(searchResults[0].path)
               if (e.key === "Escape") setShowSearch(false)
             }}
-            placeholder="Search learners, domains, observations, or reports..."
+            placeholder="Search learners, report summaries, observations, or recommendations..."
             className="pl-9 bg-slate-50/50 dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-900 dark:text-slate-50"
             aria-label="Search ReadAssist-SNED records"
           />
@@ -154,7 +182,7 @@ export function Header() {
                 </button>
               )) : (
                 <div className="p-4 text-sm text-center text-slate-500 dark:text-slate-400">
-                  <p>No pending teacher-review items.</p>
+                  <p>No pending workflow alerts.</p>
                 </div>
               )}
             </div>

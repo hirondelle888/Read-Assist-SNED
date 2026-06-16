@@ -1,28 +1,61 @@
 import React, { useMemo, useState } from "react"
-import { FileDown, Printer, FileText, ShieldCheck } from "lucide-react"
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/src/components/ui/card"
+import { FileDown, FileText, Printer, ShieldCheck } from "lucide-react"
+import { format } from "date-fns"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/src/components/ui/card"
 import { Button } from "@/src/components/ui/button"
 import { Badge } from "@/src/components/ui/badge"
 import { AssessmentSummaryPanel } from "@/src/components/AssessmentSummaryPanel"
+import { confidentialityNotice, prototypeAssumptionNote } from "@/src/data"
 import { useData } from "@/src/contexts/DataContext"
-import { format } from "date-fns"
 
-type ReportType = "Learner Summary" | "Recommendation" | "Progress" | "Intervention History"
+type ReportType =
+  | "Learner Profile Summary"
+  | "External Report Summary"
+  | "Reading Assessment Summary"
+  | "Observation Summary"
+  | "Recommendation Rationale"
+  | "Expert and Parent Validation Record"
+  | "Active Intervention Plan"
+  | "Progress Monitoring Summary"
 
-const reportTypes: ReportType[] = ["Learner Summary", "Recommendation", "Progress", "Intervention History"]
+const reportTypes: ReportType[] = [
+  "Learner Profile Summary",
+  "External Report Summary",
+  "Reading Assessment Summary",
+  "Observation Summary",
+  "Recommendation Rationale",
+  "Expert and Parent Validation Record",
+  "Active Intervention Plan",
+  "Progress Monitoring Summary",
+]
 
 export function Reports() {
-  const { learners, assessments, observations, recommendations } = useData()
+  const {
+    learners,
+    assessments,
+    observations,
+    recommendations,
+    externalReports,
+    interventionPlans,
+    progressRecords,
+  } = useData()
   const [selectedLearnerId, setSelectedLearnerId] = useState(learners[0]?.id || "")
-  const [reportType, setReportType] = useState<ReportType>("Learner Summary")
+  const [reportType, setReportType] = useState<ReportType>("Learner Profile Summary")
   const [exportStatus, setExportStatus] = useState("")
 
-  const learner = learners.find(l => l.id === selectedLearnerId) || learners[0]
-  const learnerAssessments = useMemo(() => assessments.filter(a => a.learnerId === learner?.id), [assessments, learner?.id])
-  const learnerObservations = useMemo(() => observations.filter(o => o.learnerId === learner?.id), [observations, learner?.id])
-  const learnerRecommendations = useMemo(() => recommendations.filter(r => r.learnerId === learner?.id), [recommendations, learner?.id])
+  const learner = learners.find((entry) => entry.id === selectedLearnerId) || learners[0]
+  const learnerAssessments = useMemo(() => assessments.filter((entry) => entry.learnerId === learner?.id), [assessments, learner?.id])
+  const learnerObservations = useMemo(() => observations.filter((entry) => entry.learnerId === learner?.id), [learner?.id, observations])
+  const learnerRecommendations = useMemo(() => recommendations.filter((entry) => entry.learnerId === learner?.id), [learner?.id, recommendations])
+  const learnerReports = useMemo(() => externalReports.filter((entry) => entry.learnerId === learner?.id), [externalReports, learner?.id])
+  const learnerPlans = useMemo(() => interventionPlans.filter((entry) => entry.learnerId === learner?.id), [interventionPlans, learner?.id])
+  const learnerProgress = useMemo(() => progressRecords.filter((entry) => entry.learnerId === learner?.id), [learner?.id, progressRecords])
+
   const latestAssessment = [...learnerAssessments].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())[0]
+  const latestObservation = [...learnerObservations].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())[0]
   const latestRecommendation = [...learnerRecommendations].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())[0]
+  const latestPlan = [...learnerPlans].sort((a, b) => new Date(b.startDate).getTime() - new Date(a.startDate).getTime())[0]
+  const latestProgress = [...learnerProgress].sort((a, b) => new Date(b.progressDate).getTime() - new Date(a.progressDate).getTime())[0]
 
   const handleGeneratePdf = () => {
     const report = buildPdfReport({
@@ -31,8 +64,14 @@ export function Reports() {
       learnerAssessments,
       learnerObservations,
       learnerRecommendations,
+      learnerReports,
+      learnerPlans,
+      learnerProgress,
       latestAssessment,
+      latestObservation,
       latestRecommendation,
+      latestPlan,
+      latestProgress,
     })
     const blob = createProfessionalPdf(report)
     const url = URL.createObjectURL(blob)
@@ -51,7 +90,9 @@ export function Reports() {
     return (
       <div className="space-y-6">
         <h2 className="text-2xl font-bold tracking-tight text-slate-900 dark:text-slate-50">Reports</h2>
-        <Card><CardContent className="p-8 text-center text-slate-500">Add a learner before generating reports.</CardContent></Card>
+        <Card>
+          <CardContent className="p-8 text-center text-slate-500">Add a learner before generating reports.</CardContent>
+        </Card>
       </div>
     )
   }
@@ -60,7 +101,13 @@ export function Reports() {
     <div className="space-y-6">
       <div>
         <h2 className="text-2xl font-bold tracking-tight text-slate-900 dark:text-slate-50">Reports</h2>
-        <p className="text-slate-500 dark:text-slate-400 mt-1">Generate printable thesis-aligned summaries for teacher review and documentation.</p>
+        <p className="mt-1 text-slate-500 dark:text-slate-400">
+          Generate teacher and specialist support documentation across the full learner support workflow.
+        </p>
+      </div>
+
+      <div className="rounded-2xl border border-slate-200 bg-slate-50/70 p-4 text-sm leading-7 text-slate-700 dark:border-slate-800 dark:bg-slate-900/60 dark:text-slate-300 print:hidden">
+        <span className="font-semibold text-slate-900 dark:text-slate-100">Prototype note:</span> {prototypeAssumptionNote}
       </div>
 
       <Card className="print:hidden">
@@ -70,10 +117,14 @@ export function Reports() {
             <select
               id="learner"
               value={selectedLearnerId}
-              onChange={(e) => setSelectedLearnerId(e.target.value)}
+              onChange={(event) => setSelectedLearnerId(event.target.value)}
               className="flex h-10 w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 dark:border-slate-700 dark:bg-slate-900 dark:text-white"
             >
-              {learners.map(l => <option key={l.id} value={l.id}>{l.code}</option>)}
+              {learners.map((entry) => (
+                <option key={entry.id} value={entry.id}>
+                  {entry.code}
+                </option>
+              ))}
             </select>
           </div>
           <div className="space-y-2">
@@ -81,10 +132,14 @@ export function Reports() {
             <select
               id="reportType"
               value={reportType}
-              onChange={(e) => setReportType(e.target.value as ReportType)}
+              onChange={(event) => setReportType(event.target.value as ReportType)}
               className="flex h-10 w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 dark:border-slate-700 dark:bg-slate-900 dark:text-white"
             >
-              {reportTypes.map(type => <option key={type} value={type}>{type}</option>)}
+              {reportTypes.map((type) => (
+                <option key={type} value={type}>
+                  {type}
+                </option>
+              ))}
             </select>
           </div>
           <div className="flex items-end gap-3">
@@ -98,13 +153,13 @@ export function Reports() {
         </CardContent>
       </Card>
 
-      {exportStatus && (
-        <div className="print:hidden rounded-lg border border-green-200 bg-green-50 px-4 py-3 text-sm font-medium text-green-800 dark:border-green-800 dark:bg-green-900/30 dark:text-green-200">
+      {exportStatus ? (
+        <div className="rounded-lg border border-green-200 bg-green-50 px-4 py-3 text-sm font-medium text-green-800 dark:border-green-800 dark:bg-green-900/30 dark:text-green-200 print:hidden">
           {exportStatus}
         </div>
-      )}
+      ) : null}
 
-      <Card className="print:shadow-none print:border-none">
+      <Card className="print:border-none print:shadow-none">
         <CardHeader className="border-b border-slate-100 dark:border-slate-800">
           <div className="flex flex-wrap items-start justify-between gap-4">
             <div>
@@ -112,80 +167,154 @@ export function Reports() {
                 <FileText size={20} />
                 <span className="text-sm font-semibold">ReadAssist-SNED</span>
               </div>
-              <CardTitle className="text-2xl text-slate-900 dark:text-slate-50">{reportType} Report</CardTitle>
+              <CardTitle className="text-2xl text-slate-900 dark:text-slate-50">{reportType}</CardTitle>
               <CardDescription>Generated {format(new Date(), "MMM d, yyyy")} for learner code {learner.code}</CardDescription>
             </div>
             <Badge variant="outline" className="flex items-center gap-1">
-              <ShieldCheck size={12} /> Teacher-reviewed document
+              <ShieldCheck size={12} /> Teacher and specialist support documentation
             </Badge>
           </div>
         </CardHeader>
         <CardContent className="space-y-6 p-6">
-          <section className="grid gap-4 md:grid-cols-3">
+          <section className="grid gap-4 md:grid-cols-4">
+            <SummaryItem label="Learner Code" value={learner.code} />
             <SummaryItem label="Grade Level" value={learner.gradeLevel} />
-            <SummaryItem label="Support Need" value={latestRecommendation?.classifiedSupportLevel || learner.supportNeeds} />
-            <SummaryItem label="Progress Status" value={latestRecommendation?.progressStatus || learner.status} />
+            <SummaryItem label="Consent Status" value={learner.consentStatus} />
+            <SummaryItem label="Access Sensitivity" value={learner.dataAccessSensitivity} />
           </section>
 
-          <section>
-            <h3 className="text-base font-semibold text-slate-900 dark:text-slate-50">Educational Profile</h3>
-            <div className="mt-3 grid gap-4 md:grid-cols-2">
-              <ListBlock title="Reading Concerns" items={learner.readingConcerns} />
-              <ListBlock title="Accommodations" items={learner.accommodations} />
-              <ListBlock title="IEP-Aligned Goals" items={learner.iepGoals} />
-              <ListBlock title="Observation Tags" items={learnerObservations.flatMap(o => o.nlpTags).slice(0, 8)} />
-            </div>
+          <section className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm leading-7 text-amber-950 dark:border-amber-800/40 dark:bg-amber-900/10 dark:text-amber-100">
+            <span className="font-semibold">Confidentiality notice:</span> {confidentialityNotice}
           </section>
 
-          {(reportType === "Learner Summary" || reportType === "Progress") && (
+          {(reportType === "Learner Profile Summary" || reportType === "Reading Assessment Summary") && latestAssessment ? (
             <section>
-              <h3 className="text-base font-semibold text-slate-900 dark:text-slate-50">Assessment Summary</h3>
-              {latestAssessment ? (
-                <div className="mt-3">
-                  <AssessmentSummaryPanel
-                    summary={latestAssessment.summary}
-                    totalScore={latestAssessment.totalScore}
-                    percentage={latestAssessment.percentage}
-                    lowestDomains={latestAssessment.lowestDomains}
+              <h3 className="text-base font-semibold text-slate-900 dark:text-slate-50">Academic Reading Assessment Summary</h3>
+              <div className="mt-3">
+                <AssessmentSummaryPanel
+                  summary={latestAssessment.summary}
+                  totalScore={latestAssessment.totalScore}
+                  percentage={latestAssessment.percentage}
+                  lowestDomains={latestAssessment.lowestDomains}
+                />
+              </div>
+            </section>
+          ) : null}
+
+          {(reportType === "Learner Profile Summary" || reportType === "External Report Summary") && (
+            <SectionBlock title="External report summaries">
+              {learnerReports.length > 0 ? (
+                learnerReports.map((report) => (
+                  <div key={report.id}>
+                    <RecordBox
+                    title={`${report.reportType} · ${report.authorizedForUse ? "Authorized" : "Restricted"}`}
+                    subtitle={`${report.source} · ${format(new Date(report.reportDate), "MMM d, yyyy")}`}
+                    body={report.keyFindingsSummary}
+                    footer={`Existing recommendations: ${report.existingRecommendations.join(", ") || "None recorded"}`}
+                    />
+                  </div>
+                ))
+              ) : (
+                <EmptyText text="No external report summaries recorded." />
+              )}
+            </SectionBlock>
+          )}
+
+          {(reportType === "Learner Profile Summary" || reportType === "Observation Summary") && (
+            <SectionBlock title="Observation summaries">
+              {learnerObservations.length > 0 ? (
+                [...learnerObservations].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()).map((observation) => (
+                  <div key={observation.id}>
+                    <RecordBox
+                    title={`${observation.sessionType} · ${observation.promptingLevel}`}
+                    subtitle={format(new Date(observation.date), "MMM d, yyyy")}
+                    body={observation.narrative}
+                    footer={`Tags: ${observation.nlpTags.join(", ") || "None recorded"}`}
+                    />
+                  </div>
+                ))
+              ) : (
+                <EmptyText text="No observation summaries recorded." />
+              )}
+            </SectionBlock>
+          )}
+
+          {(reportType === "Learner Profile Summary" || reportType === "Recommendation Rationale") && (
+            <SectionBlock title="Recommendation rationale">
+              {latestRecommendation ? (
+                <div className="space-y-3">
+                  <SummaryItem label="Validation status" value={latestRecommendation.validationStatus} />
+                  <SummaryItem label="Target concern" value={latestRecommendation.targetConcern} />
+                  <SummaryItem label="Suggested frequency" value={latestRecommendation.editableFrequency} />
+                  <ListBlock title="Recommended interventions" items={latestRecommendation.recommendedStrategies} />
+                  <ListBlock title="Evidence used" items={latestRecommendation.evidence} />
+                  <ListBlock title="Reasoning steps" items={latestRecommendation.reasoningSteps} />
+                </div>
+              ) : (
+                <EmptyText text="No recommendation record available." />
+              )}
+            </SectionBlock>
+          )}
+
+          {reportType === "Expert and Parent Validation Record" && (
+            <SectionBlock title="Validation history">
+              {latestRecommendation?.validationRecords.length ? (
+                [...latestRecommendation.validationRecords].sort((a, b) => new Date(b.reviewDate).getTime() - new Date(a.reviewDate).getTime()).map((record) => (
+                  <div key={record.id}>
+                    <RecordBox
+                    title={`${record.status} · ${record.reviewerRole}`}
+                    subtitle={`${record.reviewerName} · ${format(new Date(record.reviewDate), "MMM d, yyyy")}`}
+                    body={record.notes}
+                    />
+                  </div>
+                ))
+              ) : (
+                <EmptyText text="No validation history recorded yet." />
+              )}
+            </SectionBlock>
+          )}
+
+          {reportType === "Active Intervention Plan" && (
+            <SectionBlock title="Active intervention plan">
+              {latestPlan ? (
+                <div className="space-y-3">
+                  <SummaryItem label="Target skill" value={latestPlan.targetSkill} />
+                  <SummaryItem label="Strategy" value={latestPlan.strategy} />
+                  <SummaryItem label="Frequency" value={latestPlan.frequency} />
+                  <SummaryItem label="Duration" value={latestPlan.duration} />
+                  <SummaryItem label="Responsible person" value={latestPlan.responsiblePerson} />
+                  <SummaryItem label="Review date" value={format(new Date(latestPlan.reviewDate), "MMM d, yyyy")} />
+                  <ListBlock title="Materials" items={latestPlan.materials} />
+                </div>
+              ) : (
+                <EmptyText text="No active intervention plan recorded." />
+              )}
+            </SectionBlock>
+          )}
+
+          {reportType === "Progress Monitoring Summary" && (
+            <SectionBlock title="Progress monitoring summary">
+              {latestProgress ? (
+                <div className="space-y-3">
+                  <SummaryItem label="Latest target skill" value={latestProgress.targetSkill} />
+                  <SummaryItem label="Current score or rating" value={`${latestProgress.currentScore}/10`} />
+                  <SummaryItem label="Recommended action" value={latestProgress.recommendedAction} />
+                  <SummaryItem label="Prompting level" value={latestProgress.promptingLevel} />
+                  <RecordBox
+                    title="Progress notes"
+                    subtitle={format(new Date(latestProgress.progressDate), "MMM d, yyyy")}
+                    body={latestProgress.teacherTherapistNotes || latestProgress.reason}
+                    footer={`Accuracy: ${latestProgress.comprehensionAccuracy} · Engagement: ${latestProgress.attentionEngagement}`}
                   />
                 </div>
-              ) : <p className="mt-2 text-sm text-slate-500">No assessment records yet.</p>}
-            </section>
+              ) : (
+                <EmptyText text="No progress records available." />
+              )}
+            </SectionBlock>
           )}
 
-          {(reportType === "Learner Summary" || reportType === "Recommendation") && (
-            <section>
-              <h3 className="text-base font-semibold text-slate-900 dark:text-slate-50">Explainable Recommendation</h3>
-              {latestRecommendation ? (
-                <div className="mt-3 space-y-3 rounded-lg border border-slate-200 p-4 text-sm dark:border-slate-800">
-                  <p><span className="font-medium">Review status:</span> {latestRecommendation.teacherReviewStatus}</p>
-                  <ListBlock title="Recommended Interventions" items={latestRecommendation.recommendedStrategies} />
-                  <ListBlock title="Evidence" items={latestRecommendation.evidence} />
-                </div>
-              ) : <p className="mt-2 text-sm text-slate-500">No recommendation generated yet.</p>}
-            </section>
-          )}
-
-          {(reportType === "Learner Summary" || reportType === "Intervention History") && (
-            <section>
-              <h3 className="text-base font-semibold text-slate-900 dark:text-slate-50">Intervention History</h3>
-              {learner.interventionHistory.length > 0 ? (
-                <div className="mt-3 space-y-3">
-                  {learner.interventionHistory.map(item => (
-                    <div key={item.id} className="rounded-lg border border-slate-200 p-4 text-sm dark:border-slate-800">
-                      <p className="font-medium text-slate-900 dark:text-slate-100">{item.strategy}</p>
-                      <p className="mt-1 text-slate-500 dark:text-slate-400">{format(new Date(item.date), "MMM d, yyyy")}</p>
-                      <p className="mt-2 text-slate-700 dark:text-slate-300">{item.outcome}</p>
-                      <p className="mt-1 text-slate-600 dark:text-slate-400">Teacher reflection: {item.teacherReflection}</p>
-                    </div>
-                  ))}
-                </div>
-              ) : <p className="mt-2 text-sm text-slate-500">No intervention history recorded yet.</p>}
-            </section>
-          )}
-
-          <section className="rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900 dark:border-amber-800/50 dark:bg-amber-900/20 dark:text-amber-100">
-            This report is an educational decision-support summary. It does not diagnose disabilities, prescribe clinical action, or replace teacher judgment.
+          <section className="rounded-xl border border-blue-200 bg-blue-50 p-4 text-sm leading-7 text-blue-950 dark:border-blue-900/40 dark:bg-blue-900/10 dark:text-blue-100">
+            This report is teacher or specialist support documentation. It does not function as a medical report, a diagnosis document, or a replacement for expert judgment.
           </section>
         </CardContent>
       </Card>
@@ -195,20 +324,22 @@ export function Reports() {
 
 function SummaryItem({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-lg border border-slate-200 p-4 dark:border-slate-800">
-      <p className="text-xs uppercase tracking-wide text-slate-500 dark:text-slate-400">{label}</p>
-      <p className="mt-1 font-semibold text-slate-900 dark:text-slate-50">{value}</p>
+    <div className="rounded-xl border border-slate-200 p-4 dark:border-slate-800">
+      <p className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">{label}</p>
+      <p className="mt-2 text-sm font-semibold leading-7 text-slate-900 dark:text-slate-50">{value}</p>
     </div>
   )
 }
 
 function ListBlock({ title, items }: { title: string; items: string[] }) {
   return (
-    <div>
-      <p className="text-sm font-medium text-slate-900 dark:text-slate-100">{title}</p>
+    <div className="rounded-xl border border-slate-200 p-4 dark:border-slate-800">
+      <p className="text-sm font-semibold text-slate-900 dark:text-slate-100">{title}</p>
       {items.length > 0 ? (
-        <ul className="mt-2 list-disc space-y-1 pl-5 text-sm text-slate-600 dark:text-slate-300">
-          {items.map((item, index) => <li key={`${item}-${index}`}>{item}</li>)}
+        <ul className="mt-3 list-disc space-y-2 pl-5 text-sm leading-7 text-slate-600 dark:text-slate-300">
+          {items.map((item, index) => (
+            <li key={`${item}-${index}`}>{item}</li>
+          ))}
         </ul>
       ) : (
         <p className="mt-2 text-sm text-slate-500 dark:text-slate-400">None recorded.</p>
@@ -217,14 +348,54 @@ function ListBlock({ title, items }: { title: string; items: string[] }) {
   )
 }
 
+function SectionBlock({ title, children }: { title: string; children: React.ReactNode }) {
+  return (
+    <section>
+      <h3 className="text-base font-semibold text-slate-900 dark:text-slate-50">{title}</h3>
+      <div className="mt-3 space-y-3">{children}</div>
+    </section>
+  )
+}
+
+function RecordBox({
+  title,
+  subtitle,
+  body,
+  footer,
+}: {
+  title: string
+  subtitle: string
+  body: string
+  footer?: string
+}) {
+  return (
+    <div className="rounded-xl border border-slate-200 p-4 dark:border-slate-800">
+      <p className="text-sm font-semibold text-slate-900 dark:text-slate-100">{title}</p>
+      <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">{subtitle}</p>
+      <p className="mt-3 text-sm leading-7 text-slate-600 dark:text-slate-300">{body}</p>
+      {footer ? <p className="mt-3 text-sm leading-7 text-slate-500 dark:text-slate-400">{footer}</p> : null}
+    </div>
+  )
+}
+
+function EmptyText({ text }: { text: string }) {
+  return <p className="text-sm text-slate-500 dark:text-slate-400">{text}</p>
+}
+
 type PdfReportInput = {
   reportType: ReportType
   learner: NonNullable<ReturnType<typeof useData>["learners"][number]>
   learnerAssessments: ReturnType<typeof useData>["assessments"]
   learnerObservations: ReturnType<typeof useData>["observations"]
   learnerRecommendations: ReturnType<typeof useData>["recommendations"]
+  learnerReports: ReturnType<typeof useData>["externalReports"]
+  learnerPlans: ReturnType<typeof useData>["interventionPlans"]
+  learnerProgress: ReturnType<typeof useData>["progressRecords"]
   latestAssessment: ReturnType<typeof useData>["assessments"][number] | undefined
+  latestObservation: ReturnType<typeof useData>["observations"][number] | undefined
   latestRecommendation: ReturnType<typeof useData>["recommendations"][number] | undefined
+  latestPlan: ReturnType<typeof useData>["interventionPlans"][number] | undefined
+  latestProgress: ReturnType<typeof useData>["progressRecords"][number] | undefined
 }
 
 type PdfReport = {
@@ -249,65 +420,110 @@ function buildPdfReport(input: PdfReportInput) {
     learnerAssessments,
     learnerObservations,
     learnerRecommendations,
+    learnerReports,
+    learnerPlans,
+    learnerProgress,
     latestAssessment,
+    latestObservation,
     latestRecommendation,
+    latestPlan,
+    latestProgress,
   } = input
+
   const generatedAt = format(new Date(), "MMM d, yyyy h:mm a")
   const filename = `ReadAssist-SNED_${learner.code}_${reportType.replace(/\s+/g, "-")}_${format(new Date(), "yyyy-MM-dd")}.pdf`
-  const title = `ReadAssist-SNED ${reportType} Report`
+  const title = `ReadAssist-SNED ${reportType}`
   const sections: PdfReport["sections"] = [
     {
-      title: "Educational Profile",
+      title: "Learner Support Profile",
       rows: [
-        { label: "Reading Concerns", value: formatList(learner.readingConcerns) },
-        { label: "Accommodations", value: formatList(learner.accommodations) },
-        { label: "IEP-Aligned Goals", value: formatList(learner.iepGoals) },
-        { label: "Observation Tags", value: formatList(unique(learnerObservations.flatMap(o => o.nlpTags)).slice(0, 10)) },
+        { label: "Display record", value: learner.privacyMode === "Anonymized Record" ? learner.anonymizedId : learner.displayName },
+        { label: "Grade level", value: learner.gradeLevel },
+        { label: "Diagnosis status", value: learner.diagnosisStatus },
+        { label: "Current support need", value: learner.supportNeeds },
+        { label: "Consent status", value: learner.consentStatus },
       ],
     },
   ]
 
-  if (reportType === "Learner Summary" || reportType === "Progress") {
+  if (latestAssessment) {
     sections.push({
-      title: "Assessment Summary",
-      rows: latestAssessment ? [
-        { label: "Latest Adapted Score", value: `${latestAssessment.totalScore}/50 (${latestAssessment.percentage}%)` },
-        { label: "Assessment Summary", value: latestAssessment.summary },
-        { label: "Priority Domains", value: formatList(latestAssessment.lowestDomains) },
-        { label: "Assessment Sessions on Record", value: String(learnerAssessments.length) },
-      ] : [
-        { label: "Assessment Status", value: "No assessment records yet." },
+      title: "Academic Reading Assessment Summary",
+      rows: [
+        { label: "Latest score", value: `${latestAssessment.totalScore}/50 (${latestAssessment.percentage}%)` },
+        { label: "Support estimate", value: latestAssessment.overrideSupportNeedEstimate || latestAssessment.supportNeedEstimate },
+        { label: "Priority domains", value: latestAssessment.lowestDomains.join("; ") || "None flagged" },
+        { label: "Assessment source", value: latestAssessment.source },
       ],
+      paragraphs: [latestAssessment.summary],
     })
   }
 
-  if (reportType === "Learner Summary" || reportType === "Recommendation") {
-    const recommendationSection: PdfReport["sections"][number] = {
-      title: "Explainable Recommendation",
-      rows: latestRecommendation ? [
-        { label: "Teacher Review Status", value: latestRecommendation.teacherReviewStatus },
-        { label: "System Confidence", value: `${latestRecommendation.confidence}%` },
-        { label: "Recommended Interventions", value: formatList(latestRecommendation.recommendedStrategies) },
-      ] : [
-        { label: "Recommendation Status", value: "No recommendation generated yet." },
-      ],
-    }
-    if (latestRecommendation) {
-      sections.push(recommendationSection)
-      sections.push({ title: "Contributing Factors", bullets: latestRecommendation.contributingFactors })
-      sections.push({ title: "Evidence Used", bullets: latestRecommendation.evidence })
-      sections.push({ title: "Reasoning Process", bullets: latestRecommendation.reasoningSteps })
-    } else {
-      sections.push(recommendationSection)
-    }
+  if (learnerReports.length > 0) {
+    sections.push({
+      title: "External Report Summary",
+      bullets: learnerReports.map(
+        (report) =>
+          `${report.reportType} - ${report.source} (${format(new Date(report.reportDate), "MMM d, yyyy")}): ${report.keyFindingsSummary}`
+      ),
+    })
   }
 
-  if (reportType === "Learner Summary" || reportType === "Intervention History") {
+  if (latestObservation) {
     sections.push({
-      title: "Intervention History",
-      bullets: learner.interventionHistory.length > 0
-        ? learner.interventionHistory.map(item => `${format(new Date(item.date), "MMM d, yyyy")} - ${item.strategy}. Outcome: ${item.outcome} Teacher reflection: ${item.teacherReflection}`)
-        : ["No intervention history recorded yet."],
+      title: "Observation Summary",
+      rows: [
+        { label: "Session type", value: latestObservation.sessionType },
+        { label: "Prompting level", value: latestObservation.promptingLevel },
+      ],
+      paragraphs: [latestObservation.narrative],
+      bullets: latestObservation.nlpTags,
+    })
+  }
+
+  if (latestRecommendation) {
+    sections.push({
+      title: "Recommendation Rationale",
+      rows: [
+        { label: "Target concern", value: latestRecommendation.targetConcern },
+        { label: "Validation status", value: latestRecommendation.validationStatus },
+        { label: "Parent confirmation", value: latestRecommendation.parentGuardianConfirmationStatus },
+        { label: "Suggested frequency", value: latestRecommendation.editableFrequency },
+      ],
+      bullets: latestRecommendation.recommendedStrategies,
+    })
+    sections.push({
+      title: "Validation Record",
+      bullets:
+        latestRecommendation.validationRecords.map(
+          (record) => `${record.status} - ${record.reviewerName} (${record.reviewerRole}) on ${record.reviewDate}: ${record.notes}`
+        ) || ["No validation records available."],
+    })
+  }
+
+  if (latestPlan) {
+    sections.push({
+      title: "Active Intervention Plan",
+      rows: [
+        { label: "Target skill", value: latestPlan.targetSkill },
+        { label: "Strategy", value: latestPlan.strategy },
+        { label: "Frequency", value: latestPlan.frequency },
+        { label: "Duration", value: latestPlan.duration },
+        { label: "Responsible person", value: latestPlan.responsiblePerson },
+      ],
+      bullets: latestPlan.materials,
+    })
+  }
+
+  if (latestProgress) {
+    sections.push({
+      title: "Progress Monitoring Summary",
+      rows: [
+        { label: "Current score or rating", value: `${latestProgress.currentScore}/10` },
+        { label: "Recommended action", value: latestProgress.recommendedAction },
+        { label: "Prompting level", value: latestProgress.promptingLevel },
+      ],
+      paragraphs: [latestProgress.reason, latestProgress.teacherTherapistNotes].filter(Boolean),
     })
   }
 
@@ -317,8 +533,11 @@ function buildPdfReport(input: PdfReportInput) {
       { label: "Assessments", value: String(learnerAssessments.length) },
       { label: "Observations", value: String(learnerObservations.length) },
       { label: "Recommendations", value: String(learnerRecommendations.length) },
+      { label: "External reports", value: String(learnerReports.length) },
+      { label: "Intervention plans", value: String(learnerPlans.length) },
+      { label: "Progress updates", value: String(learnerProgress.length) },
     ],
-    paragraphs: ["Prepared for teacher review and school-based reading intervention documentation."],
+    paragraphs: [prototypeAssumptionNote],
   })
 
   return {
@@ -329,10 +548,11 @@ function buildPdfReport(input: PdfReportInput) {
     summaryItems: [
       { label: "Learner Code", value: learner.code },
       { label: "Grade Level", value: learner.gradeLevel },
+      { label: "Consent Status", value: learner.consentStatus },
       { label: "Support Need", value: latestRecommendation?.classifiedSupportLevel || learner.supportNeeds },
-      { label: "Progress Status", value: latestRecommendation?.progressStatus || learner.status },
     ],
-    advisory: "This report is an educational decision-support summary. It does not diagnose disabilities, prescribe clinical action, or replace teacher judgment.",
+    advisory:
+      "This report is teacher or specialist support documentation. It does not diagnose disabilities, prescribe clinical action, or replace professional judgment.",
     sections,
   }
 }
@@ -372,7 +592,7 @@ function createProfessionalPdf(report: PdfReport) {
   const writeWrapped = (value: string, x: number, width: number, size = 10, bold = false, color = "#334155", leading = 13) => {
     const wrapped = wrapLine(cleanPdfText(value), Math.max(20, Math.floor(width / (size * 0.52))))
     ensureSpace(wrapped.length * leading + 4)
-    wrapped.forEach(part => {
+    wrapped.forEach((part) => {
       text(part, x, y, size, bold, color)
       y -= leading
     })
@@ -410,7 +630,7 @@ function createProfessionalPdf(report: PdfReport) {
   const drawPageHeader = () => {
     rect(0, 742, pageWidth, 50, "#1d4ed8")
     text("ReadAssist-SNED", margin, 770, 15, true, "#ffffff")
-    text("IEP-Aligned Reading Comprehension Decision-Support Report", margin, 754, 9, false, "#dbeafe")
+    text("Teacher and Specialist Support Documentation", margin, 754, 9, false, "#dbeafe")
   }
 
   drawPageHeader()
@@ -434,21 +654,21 @@ function createProfessionalPdf(report: PdfReport) {
 
   ensureSpace(58)
   rect(margin, y - 45, contentWidth, 48, "#fffbeb", "#f59e0b")
-  text("Teacher Review Advisory", margin + 14, y - 14, 10, true, "#92400e")
+  text("Educational Advisory", margin + 14, y - 14, 10, true, "#92400e")
   y -= 28
   writeWrapped(report.advisory, margin + 14, contentWidth - 28, 9, false, "#78350f", 12)
   y -= 16
 
-  report.sections.forEach(section => {
+  report.sections.forEach((section) => {
     sectionTitle(section.title)
-    section.paragraphs?.forEach(paragraph => {
+    section.paragraphs?.forEach((paragraph) => {
       writeWrapped(paragraph, margin, contentWidth, 10, false, "#334155")
       y -= 5
     })
-    section.rows?.forEach(row => {
+    section.rows?.forEach((row) => {
       drawTableRow(row.label, row.value)
     })
-    section.bullets?.forEach(item => {
+    section.bullets?.forEach((item) => {
       const wrapped = wrapLine(cleanPdfText(item), 86)
       ensureSpace(wrapped.length * 12 + 6)
       circle(margin + 7, y - 3, 2.2, "#2563eb")
@@ -462,7 +682,7 @@ function createProfessionalPdf(report: PdfReport) {
 
   pages.forEach((commands, index) => {
     commands.push(`q ${pdfColor("#cbd5e1")} RG 1 w ${margin} 44 m ${pageWidth - margin} 44 l S Q`)
-    commands.push(`BT ${pdfColor("#64748b")} rg /F1 8 Tf ${margin} 28 Td (ReadAssist-SNED - Teacher-reviewed decision-support document) Tj ET`)
+    commands.push(`BT ${pdfColor("#64748b")} rg /F1 8 Tf ${margin} 28 Td (ReadAssist-SNED - Confidential teacher/specialist support document) Tj ET`)
     commands.push(`BT ${pdfColor("#64748b")} rg /F1 8 Tf ${pageWidth - margin - 58} 28 Td (Page ${index + 1} of ${pages.length}) Tj ET`)
   })
 
@@ -482,7 +702,7 @@ function createProfessionalPdf(report: PdfReport) {
     objects.push(`<< /Type /Page /Parent 2 0 R /MediaBox [0 0 ${pageWidth} ${pageHeight}] /Resources << /Font << /F1 3 0 R /F2 4 0 R >> >> /Contents ${contentObjectNumber} 0 R >>`)
   })
 
-  objects[1] = `<< /Type /Pages /Kids [${pageObjectNumbers.map(number => `${number} 0 R`).join(" ")}] /Count ${pageObjectNumbers.length} >>`
+  objects[1] = `<< /Type /Pages /Kids [${pageObjectNumbers.map((number) => `${number} 0 R`).join(" ")}] /Count ${pageObjectNumbers.length} >>`
 
   let pdf = "%PDF-1.4\n"
   const offsets: number[] = [0]
@@ -492,7 +712,7 @@ function createProfessionalPdf(report: PdfReport) {
   })
   const xrefOffset = pdf.length
   pdf += `xref\n0 ${objects.length + 1}\n0000000000 65535 f \n`
-  offsets.slice(1).forEach(offset => {
+  offsets.slice(1).forEach((offset) => {
     pdf += `${offset.toString().padStart(10, "0")} 00000 n \n`
   })
   pdf += `trailer\n<< /Size ${objects.length + 1} /Root 1 0 R >>\nstartxref\n${xrefOffset}\n%%EOF`
@@ -517,7 +737,7 @@ function wrapLine(line: string, maxLength: number) {
   const words = line.split(" ")
   const lines: string[] = []
   let current = ""
-  words.forEach(word => {
+  words.forEach((word) => {
     const next = current ? `${current} ${word}` : word
     if (next.length > maxLength) {
       if (current) lines.push(current)
@@ -536,12 +756,4 @@ function escapePdfText(value: string) {
 
 function cleanPdfText(value: string) {
   return value.replace(/[^\x20-\x7E]/g, "-")
-}
-
-function formatList(items: string[]) {
-  return items.length > 0 ? items.join("; ") : "None recorded"
-}
-
-function unique(items: string[]) {
-  return Array.from(new Set(items))
 }
