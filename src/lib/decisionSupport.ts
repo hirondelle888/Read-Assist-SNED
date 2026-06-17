@@ -258,6 +258,7 @@ export function buildRecommendation(
   const classification = classifySupportNeed(assessment, observation, learner);
   const priorityTags = unique([...assessment.concernTags, ...observation.nlpTags]);
   const selectedTags = priorityTags.length > 0 ? priorityTags : ["literal difficulty"];
+  const contextualHistory = getContextualHistoryEntries(learner);
 
   const recommendedStrategies = unique(selectedTags.flatMap((tag) => recommendationMatrix[tag]?.interventions || [])).slice(0, 6);
   const materials = unique(selectedTags.flatMap((tag) => recommendationMatrix[tag]?.materials || [])).slice(0, 6);
@@ -284,11 +285,13 @@ export function buildRecommendation(
       ...observation.extractedEvidence,
       `Current IEP/individualized goals considered: ${learner.iepGoals.slice(0, 2).join("; ") || "No goals encoded yet."}`,
       `Accommodations considered: ${learner.accommodations.slice(0, 3).join(", ") || "No accommodations encoded yet."}`,
+      ...contextualHistory.map((entry) => `${entry.title} contextual summary: ${entry.summary}`),
     ],
     dataConsidered: unique([
       "Learner support profile",
       "Academic reading assessment summary",
       "Teacher/therapist observation",
+      ...contextualHistory.map((entry) => `${entry.title} authorized contextual summary`),
       learner.consentStatus !== "Not granted" ? "Current accommodations and individualized goals" : "",
       learner.dataAccessSensitivity !== "Standard" ? "Restricted-data access safeguards" : "",
     ].filter(Boolean)),
@@ -297,6 +300,9 @@ export function buildRecommendation(
       "Assessment results were summarized into reading-concern indicators and support estimates.",
       "Observation notes were tagged using rule-based support-indicator detection.",
       "Individualized goals, accommodations, communication level, and attention support were considered as planning context.",
+      contextualHistory.length > 0
+        ? "Authorized history summaries were treated as contextual background only and did not drive the recommendation on their own."
+        : "No authorized history summary was used as recommendation context in this draft.",
       "Recommendations were matched to observed reading needs, not to diagnosis alone.",
       "Draft recommendations require expert validation and, when needed, parent/guardian confirmation before activation.",
     ],
@@ -335,4 +341,23 @@ function unique<T>(items: T[]) {
 function clampScore(value: number) {
   if (Number.isNaN(value)) return 0;
   return Math.min(10, Math.max(0, Number(value)));
+}
+
+function getContextualHistoryEntries(learner: Learner) {
+  const sections = [
+    { title: "Medical history", value: learner.historySummary.medicalHistory },
+    { title: "Developmental history", value: learner.historySummary.developmentalHistory },
+    { title: "Family history", value: learner.historySummary.familyHistory },
+    { title: "Academic history", value: learner.historySummary.academicHistory },
+    { title: "Related-service report summary", value: learner.historySummary.relatedServiceHistory },
+  ];
+
+  return sections
+    .filter((section) => ["Yes", "Restricted"].includes(section.value.useInRecommendation))
+    .filter((section) => section.value.availability === "Available" || section.value.availability === "For follow-up")
+    .filter((section) => section.value.shortSummary.trim())
+    .map((section) => ({
+      title: section.title,
+      summary: section.value.useInRecommendation === "Restricted" ? "Restricted contextual note recorded under authorized access controls." : section.value.shortSummary.trim(),
+    }));
 }

@@ -18,12 +18,26 @@ export type CommunicationLevel = "Verbal" | "Limited verbal" | "Non-verbal" | "U
 export type AttentionBehaviorSupportLevel = "Low" | "Moderate" | "High";
 export type ConsentStatus = "Granted" | "Pending" | "Limited" | "Not granted";
 export type DataAccessSensitivity = "Standard" | "Restricted" | "Highly restricted";
+export type HistoryAvailability = "Available" | "Not available" | "For follow-up" | "Not disclosed" | "Not authorized";
+export type HistorySource =
+  | "Parent/guardian report"
+  | "Dev Ped report"
+  | "Medical record"
+  | "School record"
+  | "OT report"
+  | "ST report"
+  | "ABA report"
+  | "SPED report"
+  | "Teacher observation";
+export type HistoryRecommendationUse = "Yes" | "No" | "Unsure" | "Restricted";
 export type ReportType = "Dev Ped Report" | "Academic Assessment" | "OT Report" | "ST Report" | "ABA Report" | "SPED Report" | "Other";
 export type ReportAvailability = "Available" | "Not available" | "For follow-up";
-export type ResponseMode = "Oral" | "Written" | "Pointing" | "AAC" | "Assisted";
+export type ResponseMode = "Oral" | "Written" | "Pointing" | "AAC" | "Assisted" | "Picture choices";
 export type AssessmentSource = "Academic Assessment" | "SPED activity" | "Teacher-administered reading task" | "Therapy session" | "Dev Ped report summary";
 export type SessionType = "Classroom session" | "One-on-one intervention" | "Therapy coordination" | "Home follow-up" | "Assessment review" | "Other";
 export type PromptLevel = "Independent" | "Minimal prompting" | "Moderate prompting" | "High prompting";
+export type TaskCompletion = "Completed" | "Partially completed" | "Not completed";
+export type AttentionEngagement = "Sustained engagement" | "Occasional redirection" | "Frequent redirection" | "Unable to sustain";
 export type ValidationStatus =
   | "Draft recommendation"
   | "For expert review"
@@ -46,12 +60,19 @@ export interface InterventionNote {
   teacherReflection: string;
 }
 
+export interface HistorySummaryEntry {
+  availability: HistoryAvailability;
+  source: HistorySource;
+  useInRecommendation: HistoryRecommendationUse;
+  shortSummary: string;
+}
+
 export interface HistorySummary {
-  medicalHistory: string;
-  developmentalHistory: string;
-  familyHistory: string;
-  academicHistory: string;
-  relatedServiceHistory: string;
+  medicalHistory: HistorySummaryEntry;
+  developmentalHistory: HistorySummaryEntry;
+  familyHistory: HistorySummaryEntry;
+  academicHistory: HistorySummaryEntry;
+  relatedServiceHistory: HistorySummaryEntry;
 }
 
 export interface Learner {
@@ -219,12 +240,24 @@ export interface ProgressRecord {
   learnerId: string;
   interventionPlanId: string;
   progressDate: string;
+  activityMaterialUsed: string;
   targetSkill: string;
   currentScore: number;
   promptingLevel: PromptLevel;
-  taskCompletion: string;
-  attentionEngagement: string;
+  taskCompletion: TaskCompletion;
+  attentionEngagement: AttentionEngagement;
+  responseMode: ResponseMode;
+  totalItems: number;
+  correctResponses: number;
   comprehensionAccuracy: string;
+  computedAccuracy: number;
+  computedProgressScore: number;
+  scoreChangeFromPrevious: number | null;
+  computedProgressStatus: ProgressStatus;
+  systemSuggestedAction: ProgressAction;
+  systemSuggestionReason: string;
+  finalAction: ProgressAction;
+  finalActionReason: string;
   teacherTherapistNotes: string;
   parentFeedback: string;
   recommendedAction: ProgressAction;

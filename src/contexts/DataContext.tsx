@@ -19,6 +19,18 @@ import {
   mockRecommendations,
 } from "../data";
 import { analyzeObservation, buildAssessmentSummary, buildRecommendation } from "@/src/lib/decisionSupport";
+import { computeProgress, getProgressScore } from "@/src/lib/progressScoring";
+import {
+  AttentionEngagement,
+  HistoryAvailability,
+  HistoryRecommendationUse,
+  HistorySource,
+  HistorySummaryEntry,
+  ProgressAction,
+  PromptLevel,
+  ResponseMode,
+  TaskCompletion,
+} from "@/src/types";
 
 interface DataContextType {
   learners: Learner[];
@@ -364,11 +376,11 @@ function normalizeLearner(record: any): Learner {
     accommodations: record.accommodations || [],
     iepGoals: record.iepGoals || [],
     historySummary: {
-      medicalHistory: record.historySummary?.medicalHistory || "",
-      developmentalHistory: record.historySummary?.developmentalHistory || "",
-      familyHistory: record.historySummary?.familyHistory || "",
-      academicHistory: record.historySummary?.academicHistory || "",
-      relatedServiceHistory: record.historySummary?.relatedServiceHistory || "",
+      medicalHistory: normalizeHistorySummaryEntry(record.historySummary?.medicalHistory, "medicalHistory"),
+      developmentalHistory: normalizeHistorySummaryEntry(record.historySummary?.developmentalHistory, "developmentalHistory"),
+      familyHistory: normalizeHistorySummaryEntry(record.historySummary?.familyHistory, "familyHistory"),
+      academicHistory: normalizeHistorySummaryEntry(record.historySummary?.academicHistory, "academicHistory"),
+      relatedServiceHistory: normalizeHistorySummaryEntry(record.historySummary?.relatedServiceHistory, "relatedServiceHistory"),
     },
     consentStatus: record.consentStatus || "Pending",
     dataAccessSensitivity: record.dataAccessSensitivity || "Standard",
@@ -526,22 +538,158 @@ function normalizeInterventionPlan(record: any): InterventionPlan {
 }
 
 function normalizeProgressRecord(record: any): ProgressRecord {
+  const totalItems = Number(record.totalItems) || 0;
+  const correctResponses = Math.min(Number(record.correctResponses) || 0, totalItems);
+  const promptingLevel = normalizePromptingLevel(record.promptingLevel);
+  const taskCompletion = normalizeTaskCompletion(record.taskCompletion);
+  const attentionEngagement = normalizeAttentionEngagement(record.attentionEngagement);
+  const responseMode = normalizeResponseMode(record.responseMode);
+  const computed = computeProgress({
+    totalItems,
+    correctResponses,
+    promptingLevel,
+    taskCompletion,
+    attentionEngagement,
+    previousScore: typeof record.scoreChangeFromPrevious === "number" ? getProgressScore(record) - record.scoreChangeFromPrevious : null,
+  });
+  const computedProgressScore = Number(record.computedProgressScore) || Number(record.currentScore) || computed.computedProgressScore;
+  const computedAccuracy = Number(record.computedAccuracy) || computed.computedAccuracy;
+  const systemSuggestedAction = normalizeProgressAction(record.systemSuggestedAction || record.recommendedAction);
+  const finalAction = normalizeProgressAction(record.finalAction || record.recommendedAction || systemSuggestedAction);
+  const finalActionReason = record.finalActionReason || record.reason || record.systemSuggestionReason || computed.systemSuggestionReason;
+
   return {
     id: record.id,
     learnerId: record.learnerId,
     interventionPlanId: record.interventionPlanId,
     progressDate: record.progressDate || isoNow().slice(0, 10),
+    activityMaterialUsed: record.activityMaterialUsed || "Previously recorded progress activity",
     targetSkill: record.targetSkill || "",
-    currentScore: Number(record.currentScore) || 0,
-    promptingLevel: record.promptingLevel || "Moderate prompting",
-    taskCompletion: record.taskCompletion || "",
-    attentionEngagement: record.attentionEngagement || "",
-    comprehensionAccuracy: record.comprehensionAccuracy || "",
+    currentScore: computedProgressScore,
+    promptingLevel,
+    taskCompletion,
+    attentionEngagement,
+    responseMode,
+    totalItems,
+    correctResponses,
+    comprehensionAccuracy: record.comprehensionAccuracy || (totalItems > 0 ? `${correctResponses}/${totalItems} (${computedAccuracy}%)` : ""),
+    computedAccuracy,
+    computedProgressScore,
+    scoreChangeFromPrevious: typeof record.scoreChangeFromPrevious === "number" ? record.scoreChangeFromPrevious : null,
+    computedProgressStatus: record.computedProgressStatus || computed.computedProgressStatus,
+    systemSuggestedAction,
+    systemSuggestionReason: record.systemSuggestionReason || computed.systemSuggestionReason,
+    finalAction,
+    finalActionReason,
     teacherTherapistNotes: record.teacherTherapistNotes || "",
     parentFeedback: record.parentFeedback || "",
-    recommendedAction: record.recommendedAction || "Continue",
-    reason: record.reason || "",
+    recommendedAction: finalAction,
+    reason: finalActionReason,
     createdAt: record.createdAt || isoNow(),
     updatedAt: record.updatedAt || record.createdAt || isoNow(),
   };
+}
+
+function normalizePromptingLevel(value: any): PromptLevel {
+  return ["Independent", "Minimal prompting", "Moderate prompting", "High prompting"].includes(value) ? value : "Moderate prompting";
+}
+
+function normalizeTaskCompletion(value: any): TaskCompletion {
+  return ["Completed", "Partially completed", "Not completed"].includes(value) ? value : "Partially completed";
+}
+
+function normalizeAttentionEngagement(value: any): AttentionEngagement {
+  return ["Sustained engagement", "Occasional redirection", "Frequent redirection", "Unable to sustain"].includes(value)
+    ? value
+    : "Occasional redirection";
+}
+
+function normalizeResponseMode(value: any): ResponseMode {
+  return ["Oral", "Written", "Pointing", "AAC", "Assisted", "Picture choices"].includes(value) ? value : "Oral";
+}
+
+function normalizeProgressAction(value: any): ProgressAction {
+  return ["Continue", "Adjust", "Change", "Stop", "Reassess"].includes(value) ? value : "Continue";
+}
+
+function normalizeHistorySummaryEntry(value: any, key: "medicalHistory" | "developmentalHistory" | "familyHistory" | "academicHistory" | "relatedServiceHistory"): HistorySummaryEntry {
+  if (typeof value === "string") {
+    return buildHistoryEntryFromLegacyString(value, key);
+  }
+
+  const summary = value?.shortSummary || value?.summary || "";
+  return {
+    availability: normalizeHistoryAvailability(value?.availability || value?.status || inferHistoryAvailability(summary)),
+    source: normalizeHistorySource(value?.source || defaultHistorySource(key)),
+    useInRecommendation: normalizeHistoryRecommendationUse(value?.useInRecommendation || value?.use || inferRecommendationUse(value?.availability || value?.status, summary)),
+    shortSummary: typeof summary === "string" ? summary : "",
+  };
+}
+
+function buildHistoryEntryFromLegacyString(value: string, key: "medicalHistory" | "developmentalHistory" | "familyHistory" | "academicHistory" | "relatedServiceHistory"): HistorySummaryEntry {
+  const summary = value || "";
+  const availability = inferHistoryAvailability(summary);
+  return {
+    availability,
+    source: defaultHistorySource(key),
+    useInRecommendation: inferRecommendationUse(availability, summary),
+    shortSummary: summary,
+  };
+}
+
+function inferHistoryAvailability(summary: string): HistoryAvailability {
+  const normalized = summary.toLowerCase();
+  if (!normalized.trim()) return "Not available";
+  if (normalized.includes("not disclosed")) return "Not disclosed";
+  if (normalized.includes("restricted")) return "Not authorized";
+  if (normalized.includes("follow-up") || normalized.includes("pending")) return "For follow-up";
+  return "Available";
+}
+
+function inferRecommendationUse(availability: string, summary: string): HistoryRecommendationUse {
+  const normalizedSummary = summary.toLowerCase();
+  if (availability === "Not authorized" || availability === "Not disclosed") return "Restricted";
+  if (availability === "Not available") return "No";
+  if (normalizedSummary.includes("restricted")) return "Restricted";
+  if (normalizedSummary.includes("support") || normalizedSummary.includes("accommodation") || normalizedSummary.includes("intervention")) return "Yes";
+  return "Unsure";
+}
+
+function defaultHistorySource(key: "medicalHistory" | "developmentalHistory" | "familyHistory" | "academicHistory" | "relatedServiceHistory"): HistorySource {
+  switch (key) {
+    case "medicalHistory":
+      return "Medical record";
+    case "developmentalHistory":
+      return "Parent/guardian report";
+    case "familyHistory":
+      return "Parent/guardian report";
+    case "academicHistory":
+      return "School record";
+    case "relatedServiceHistory":
+      return "SPED report";
+  }
+}
+
+function normalizeHistoryAvailability(value: any): HistoryAvailability {
+  return ["Available", "Not available", "For follow-up", "Not disclosed", "Not authorized"].includes(value) ? value : "Not available";
+}
+
+function normalizeHistorySource(value: any): HistorySource {
+  return [
+    "Parent/guardian report",
+    "Dev Ped report",
+    "Medical record",
+    "School record",
+    "OT report",
+    "ST report",
+    "ABA report",
+    "SPED report",
+    "Teacher observation",
+  ].includes(value)
+    ? value
+    : "Teacher observation";
+}
+
+function normalizeHistoryRecommendationUse(value: any): HistoryRecommendationUse {
+  return ["Yes", "No", "Unsure", "Restricted"].includes(value) ? value : "Unsure";
 }

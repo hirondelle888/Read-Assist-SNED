@@ -182,12 +182,17 @@ export function LearnerProfile() {
               <CardTitle>Authorized History Summary</CardTitle>
               <CardDescription>These summaries encode external and historical context for educational planning only. They are not replacements for original specialist reports.</CardDescription>
             </CardHeader>
-            <CardContent className="grid gap-4 md:grid-cols-2">
-              <HistoryCard title="Medical History" value={learner.historySummary.medicalHistory} />
-              <HistoryCard title="Developmental History" value={learner.historySummary.developmentalHistory} />
-              <HistoryCard title="Family History" value={learner.historySummary.familyHistory} />
-              <HistoryCard title="Academic History" value={learner.historySummary.academicHistory} />
-              <HistoryCard title="OT / ST / ABA / SPED Context" value={learner.historySummary.relatedServiceHistory} className="md:col-span-2" />
+            <CardContent className="space-y-4">
+              <div className="rounded-xl border border-blue-100 bg-blue-50/70 p-4 text-sm text-blue-900 dark:border-blue-900/60 dark:bg-blue-950/30 dark:text-blue-100">
+                Encode and review only authorized educational summaries. Restricted or undisclosed sections remain contextual only and should not become the main basis of intervention recommendations.
+              </div>
+              <div className="grid gap-4 md:grid-cols-2">
+                <HistoryCard title="Medical History" value={learner.historySummary.medicalHistory} />
+                <HistoryCard title="Developmental History" value={learner.historySummary.developmentalHistory} />
+                <HistoryCard title="Family History" value={learner.historySummary.familyHistory} />
+                <HistoryCard title="Academic History" value={learner.historySummary.academicHistory} />
+                <HistoryCard title="OT / ST / ABA / SPED Context" value={learner.historySummary.relatedServiceHistory} className="md:col-span-2" />
+              </div>
             </CardContent>
           </Card>
 
@@ -301,11 +306,41 @@ function TagBlock({ title, items }: { title: string; items: string[] }) {
   );
 }
 
-function HistoryCard({ title, value, className = "" }: { title: string; value: string; className?: string }) {
+function HistoryCard({
+  title,
+  value,
+  className = "",
+}: {
+  title: string;
+  value: {
+    availability: string;
+    source: string;
+    useInRecommendation: string;
+    shortSummary: string;
+  };
+  className?: string;
+}) {
+  const restricted = ["Not authorized", "Not disclosed"].includes(value.availability);
+  const summary = restricted
+    ? "Restricted or undisclosed history. Refer only to authorized labels and access controls."
+    : value.shortSummary || "No authorized summary recorded.";
+
   return (
-    <div className={`rounded-xl border border-slate-200 p-4 dark:border-slate-800 ${className}`}>
-      <p className="text-sm font-semibold text-slate-900 dark:text-slate-50">{title}</p>
-      <p className="mt-2 text-sm leading-relaxed text-slate-600 dark:text-slate-300">{value || "No authorized summary recorded."}</p>
+    <div className={`rounded-xl border p-4 ${restricted ? "border-amber-500/60 bg-amber-50/60 dark:border-amber-700/70 dark:bg-amber-950/20" : "border-slate-200 dark:border-slate-800"} ${className}`}>
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <p className="text-sm font-semibold text-slate-900 dark:text-slate-50">{title}</p>
+        <Badge variant="warning">Context only</Badge>
+      </div>
+      <div className="mt-3 flex flex-wrap gap-2">
+        <Badge variant={restricted ? "destructive" : value.availability === "Available" ? "success" : value.availability === "For follow-up" ? "warning" : "outline"}>
+          {value.availability}
+        </Badge>
+        <Badge variant="outline">{value.source}</Badge>
+        <Badge variant={value.useInRecommendation === "Yes" ? "success" : value.useInRecommendation === "Restricted" ? "warning" : "outline"}>
+          Use: {value.useInRecommendation}
+        </Badge>
+      </div>
+      <p className="mt-3 text-sm leading-relaxed text-slate-600 dark:text-slate-300">{summary}</p>
     </div>
   );
 }

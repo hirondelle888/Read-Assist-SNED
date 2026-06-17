@@ -7,6 +7,7 @@ import { useTheme } from "../ThemeProvider"
 import { useNavigate } from "react-router-dom"
 import { useAuth } from "@/src/contexts/AuthContext"
 import { useData } from "@/src/contexts/DataContext"
+import { getProgressScore } from "@/src/lib/progressScoring"
 
 export function Header() {
   const { theme, setTheme } = useTheme()
@@ -66,10 +67,10 @@ export function Header() {
         return { label: `Observation - ${learner?.code || "learner"}`, detail: o.nlpTags.slice(0, 2).join(", ") || "Teacher observation", icon: ClipboardList, path: "/observations" }
       })
     const progressResults = progressRecords
-      .filter(record => `${record.targetSkill} ${record.recommendedAction} ${record.reason}`.toLowerCase().includes(term))
+      .filter(record => `${record.targetSkill} ${record.finalAction} ${record.finalActionReason} ${record.activityMaterialUsed} ${record.systemSuggestedAction}`.toLowerCase().includes(term))
       .map(record => {
         const learner = learners.find(l => l.id === record.learnerId)
-        return { label: `Progress update - ${learner?.code || "learner"}`, detail: `${record.recommendedAction} · ${record.targetSkill}`, icon: ClipboardList, path: "/progress" }
+        return { label: `Progress update - ${learner?.code || "learner"}`, detail: `${record.finalAction} - ${getProgressScore(record)}/10 - ${record.targetSkill}`, icon: ClipboardList, path: "/progress" }
       })
 
     return [...learnerResults, ...reportResults, ...recommendationResults, ...interventionResults, ...assessmentResults, ...observationResults, ...progressResults].slice(0, 6)

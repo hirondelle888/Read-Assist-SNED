@@ -7,6 +7,7 @@ import { Badge } from "@/src/components/ui/badge"
 import { AssessmentSummaryPanel } from "@/src/components/AssessmentSummaryPanel"
 import { confidentialityNotice, prototypeAssumptionNote } from "@/src/data"
 import { useData } from "@/src/contexts/DataContext"
+import { getProgressScore } from "@/src/lib/progressScoring"
 
 type ReportType =
   | "Learner Profile Summary"
@@ -201,6 +202,18 @@ export function Reports() {
             </section>
           ) : null}
 
+          {reportType === "Learner Profile Summary" ? (
+            <SectionBlock title="Authorized history summary">
+              <div className="grid gap-3 md:grid-cols-2">
+                <HistorySummaryBox title="Medical History" entry={learner.historySummary.medicalHistory} />
+                <HistorySummaryBox title="Developmental History" entry={learner.historySummary.developmentalHistory} />
+                <HistorySummaryBox title="Family History" entry={learner.historySummary.familyHistory} />
+                <HistorySummaryBox title="Academic History" entry={learner.historySummary.academicHistory} />
+                <HistorySummaryBox title="OT / ST / ABA / SPED Report Summary" entry={learner.historySummary.relatedServiceHistory} className="md:col-span-2" />
+              </div>
+            </SectionBlock>
+          ) : null}
+
           {(reportType === "Learner Profile Summary" || reportType === "External Report Summary") && (
             <SectionBlock title="External report summaries">
               {learnerReports.length > 0 ? (
@@ -297,14 +310,17 @@ export function Reports() {
               {latestProgress ? (
                 <div className="space-y-3">
                   <SummaryItem label="Latest target skill" value={latestProgress.targetSkill} />
-                  <SummaryItem label="Current score or rating" value={`${latestProgress.currentScore}/10`} />
-                  <SummaryItem label="Recommended action" value={latestProgress.recommendedAction} />
+                  <SummaryItem label="Computed progress score" value={`${getProgressScore(latestProgress)}/10`} />
+                  <SummaryItem label="Comprehension accuracy" value={`${latestProgress.correctResponses}/${latestProgress.totalItems} (${latestProgress.computedAccuracy}%)`} />
+                  <SummaryItem label="Response mode" value={latestProgress.responseMode} />
+                  <SummaryItem label="Final action" value={latestProgress.finalAction} />
+                  <SummaryItem label="Score change" value={formatScoreChange(latestProgress.scoreChangeFromPrevious)} />
                   <SummaryItem label="Prompting level" value={latestProgress.promptingLevel} />
                   <RecordBox
                     title="Progress notes"
                     subtitle={format(new Date(latestProgress.progressDate), "MMM d, yyyy")}
-                    body={latestProgress.teacherTherapistNotes || latestProgress.reason}
-                    footer={`Accuracy: ${latestProgress.comprehensionAccuracy} · Engagement: ${latestProgress.attentionEngagement}`}
+                    body={latestProgress.teacherTherapistNotes || latestProgress.finalActionReason}
+                    footer={`Activity/material: ${latestProgress.activityMaterialUsed} - System suggestion: ${latestProgress.systemSuggestedAction} - Engagement: ${latestProgress.attentionEngagement}`}
                   />
                 </div>
               ) : (
@@ -382,6 +398,48 @@ function EmptyText({ text }: { text: string }) {
   return <p className="text-sm text-slate-500 dark:text-slate-400">{text}</p>
 }
 
+function HistorySummaryBox({
+  title,
+  entry,
+  className = "",
+}: {
+  title: string
+  entry: {
+    availability: string
+    source: string
+    useInRecommendation: string
+    shortSummary: string
+  }
+  className?: string
+}) {
+  const restricted = ["Not authorized", "Not disclosed"].includes(entry.availability)
+  return (
+    <div className={`rounded-xl border p-4 ${restricted ? "border-amber-300 bg-amber-50 dark:border-amber-800 dark:bg-amber-950/20" : "border-slate-200 dark:border-slate-800"} ${className}`}>
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <p className="text-sm font-semibold text-slate-900 dark:text-slate-100">{title}</p>
+        <Badge variant="warning">Context only</Badge>
+      </div>
+      <div className="mt-3 flex flex-wrap gap-2">
+        <Badge variant={restricted ? "destructive" : entry.availability === "Available" ? "success" : entry.availability === "For follow-up" ? "warning" : "outline"}>
+          {entry.availability}
+        </Badge>
+        <Badge variant="outline">{entry.source}</Badge>
+        <Badge variant={entry.useInRecommendation === "Yes" ? "success" : entry.useInRecommendation === "Restricted" ? "warning" : "outline"}>
+          Use: {entry.useInRecommendation}
+        </Badge>
+      </div>
+      <p className="mt-3 text-sm leading-7 text-slate-600 dark:text-slate-300">
+        {restricted ? "Restricted or undisclosed summary. Only limited authorized context should appear here." : entry.shortSummary || "No authorized summary recorded."}
+      </p>
+    </div>
+  )
+}
+
+function formatScoreChange(value: number | null | undefined) {
+  if (value === null || value === undefined) return "Baseline record"
+  return `${value >= 0 ? "+" : ""}${value} from previous`
+}
+
 type PdfReportInput = {
   reportType: ReportType
   learner: NonNullable<ReturnType<typeof useData>["learners"][number]>
@@ -445,6 +503,17 @@ function buildPdfReport(input: PdfReportInput) {
       ],
     },
   ]
+
+  sections.push({
+    title: "Authorized History Summary",
+    bullets: [
+      formatHistoryForPdf("Medical history", learner.historySummary.medicalHistory),
+      formatHistoryForPdf("Developmental history", learner.historySummary.developmentalHistory),
+      formatHistoryForPdf("Family history", learner.historySummary.familyHistory),
+      formatHistoryForPdf("Academic history", learner.historySummary.academicHistory),
+      formatHistoryForPdf("OT / ST / ABA / SPED report summary", learner.historySummary.relatedServiceHistory),
+    ],
+  })
 
   if (latestAssessment) {
     sections.push({
@@ -519,11 +588,17 @@ function buildPdfReport(input: PdfReportInput) {
     sections.push({
       title: "Progress Monitoring Summary",
       rows: [
-        { label: "Current score or rating", value: `${latestProgress.currentScore}/10` },
-        { label: "Recommended action", value: latestProgress.recommendedAction },
+        { label: "Computed progress score", value: `${getProgressScore(latestProgress)}/10` },
+        { label: "Comprehension accuracy", value: `${latestProgress.correctResponses}/${latestProgress.totalItems} (${latestProgress.computedAccuracy}%)` },
+        { label: "Score change from previous", value: formatScoreChange(latestProgress.scoreChangeFromPrevious) },
+        { label: "Response mode", value: latestProgress.responseMode },
         { label: "Prompting level", value: latestProgress.promptingLevel },
+        { label: "Task completion", value: latestProgress.taskCompletion },
+        { label: "Attention / engagement", value: latestProgress.attentionEngagement },
+        { label: "System suggested action", value: latestProgress.systemSuggestedAction },
+        { label: "Teacher final action", value: latestProgress.finalAction },
       ],
-      paragraphs: [latestProgress.reason, latestProgress.teacherTherapistNotes].filter(Boolean),
+      paragraphs: [latestProgress.systemSuggestionReason, latestProgress.finalActionReason, latestProgress.teacherTherapistNotes].filter(Boolean),
     })
   }
 
@@ -756,4 +831,15 @@ function escapePdfText(value: string) {
 
 function cleanPdfText(value: string) {
   return value.replace(/[^\x20-\x7E]/g, "-")
+}
+
+function formatHistoryForPdf(
+  title: string,
+  entry: { availability: string; source: string; useInRecommendation: string; shortSummary: string }
+) {
+  const summary = ["Not authorized", "Not disclosed"].includes(entry.availability)
+    ? "Restricted or undisclosed summary under access controls."
+    : entry.shortSummary || "No authorized summary recorded."
+
+  return `${title} - ${entry.availability}; Source: ${entry.source}; Use: ${entry.useInRecommendation}; Summary: ${summary}`
 }
